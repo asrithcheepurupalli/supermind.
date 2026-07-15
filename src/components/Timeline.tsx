@@ -1,14 +1,18 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { SavedContent, FilterState } from '../types';
-import ContentCard from './ContentCard';
 import {
-  Search, Filter, Grid, List, Star, BarChart3, Layers,
-  Target, Database, Lightbulb, Download, Trash2,
+  Star,
+  ArrowUpDown,
+  ExternalLink,
+  Lightbulb,
+  Search,
+  Plus,
 } from 'lucide-react';
+import { SavedContent, FilterState } from '../types';
 import { useSearch } from '../hooks/useSearch';
 import { useStore } from '../store/useStore';
+import { hapticTap } from '../utils/haptics';
 
 interface TimelineProps {
   content: SavedContent[];
@@ -17,531 +21,395 @@ interface TimelineProps {
   onFilterChange: (filter: FilterState) => void;
 }
 
+const typeGlyphs: Record<SavedContent['contentType'], string> = {
+  text: '✎',
+  link: '↗',
+  image: '▣',
+  pdf: '¶',
+  audio: '♪',
+  video: '▶',
+};
+
+const timeLabel = (d: Date) =>
+  d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
+
+const dayHeading = (d: Date) => {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+};
+
+// The Book: a continuous journal, not a card grid. Entries live on ruled
+// lines with a margin column; clicking an entry unfolds it in place.
 export default function Timeline({ content, filter, onToggleFavorite, onFilterChange }: TimelineProps) {
-  const { bulkDeleteContent, bulkToggleFavorite, exportContent, settings } = useStore();
-  const [sortBy, setSortBy] = React.useState<'recent' | 'oldest' | 'favorites' | 'alphabetical'>('recent');
-  const [viewMode, setViewMode] = React.useState<'grid' | 'list' | 'masonry'>('grid');
-  const [selectedItems, setSelectedItems] = React.useState<string[]>([]);
-  const [showFilters, setShowFilters] = React.useState(false);
-  const [groupBy, setGroupBy] = React.useState<'none' | 'date' | 'category' | 'type'>('date');
+  const { deleteContent, updateContent, setFilter, setUploadModalOpen, bulkDeleteContent } = useStore();
+  const [sortAsc, setSortAsc] = React.useState(false);
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [editText, setEditText] = React.useState('');
+  const [confirmingDelete, setConfirmingDelete] = React.useState<string | null>(null);
 
   const searchResults = useSearch(content, filter.searchQuery);
 
-  const filteredContent = React.useMemo(() => {
-    let filtered = filter.searchQuery ? searchResults.map(r => r.content) : content;
+  const guides = React.useMemo(
+    () => content.filter(c => c.metadata?.isGuide).sort((a, b) => (a.metadata?.guideStep ?? 0) - (b.metadata?.guideStep ?? 0)),
+    [content]
+  );
+
+  const entries = React.useMemo(() => {
+    let filtered = (filter.searchQuery ? searchResults.map(r => r.content) : content)
+      .filter(c => !c.metadata?.isGuide);
 
     if (filter.category && filter.category !== 'all') {
       filtered = filtered.filter(item => item.category === filter.category);
     }
-
     if (filter.contentType) {
       filtered = filtered.filter(item => item.contentType === filter.contentType);
     }
-
     if (filter.tags.length > 0) {
-      filtered = filtered.filter(item =>
-        filter.tags.some(tag => item.tags.includes(tag))
-      );
+      filtered = filtered.filter(item => filter.tags.some(tag => item.tags.includes(tag)));
     }
-
     if (filter.favoritesOnly) {
       filtered = filtered.filter(item => item.isFavorite);
     }
 
-    if (filter.dateRange?.start) {
-      filtered = filtered.filter(item => item.timestamp >= filter.dateRange!.start);
+    return [...filtered].sort((a, b) =>
+      sortAsc
+        ? a.timestamp.getTime() - b.timestamp.getTime()
+        : b.timestamp.getTime() - a.timestamp.getTime()
+    );
+  }, [content, filter, sortAsc, searchResults]);
+
+  const days = React.useMemo(() => {
+    const groups: Array<{ heading: string; items: SavedContent[] }> = [];
+    for (const item of entries) {
+      const heading = dayHeading(item.timestamp);
+      const last = groups[groups.length - 1];
+      if (last && last.heading === heading) last.items.push(item);
+      else groups.push({ heading, items: [item] });
     }
-    if (filter.dateRange?.end) {
-      const end = new Date(filter.dateRange.end);
-      end.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(item => item.timestamp <= end);
-    }
-
-    return [...filtered].sort((a, b) => {
-      switch (sortBy) {
-        case 'oldest':
-          return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-        case 'favorites':
-          if (a.isFavorite && !b.isFavorite) return -1;
-          if (!a.isFavorite && b.isFavorite) return 1;
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        case 'alphabetical':
-          return a.contentText.localeCompare(b.contentText);
-        default:
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-      }
-    });
-  }, [content, filter, sortBy, searchResults]);
-
-  const groupedContent = React.useMemo(() => {
-    if (groupBy === 'none') return { 'All Items': filteredContent };
-
-    const groups: Record<string, SavedContent[]> = {};
-
-    filteredContent.forEach(item => {
-      let groupKey = '';
-
-      switch (groupBy) {
-        case 'date': {
-          const date = new Date(item.timestamp);
-          const today = new Date();
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-
-          if (date.toDateString() === today.toDateString()) {
-            groupKey = 'Today';
-          } else if (date.toDateString() === yesterday.toDateString()) {
-            groupKey = 'Yesterday';
-          } else {
-            groupKey = date.toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            });
-          }
-          break;
-        }
-        case 'category':
-          groupKey = item.category.charAt(0).toUpperCase() + item.category.slice(1);
-          break;
-        case 'type':
-          groupKey = item.contentType.charAt(0).toUpperCase() + item.contentType.slice(1);
-          break;
-        default:
-          groupKey = 'All Items';
-      }
-
-      if (!groups[groupKey]) groups[groupKey] = [];
-      groups[groupKey].push(item);
-    });
-
     return groups;
-  }, [filteredContent, groupBy]);
+  }, [entries]);
 
-  const handleSelectItem = (id: string) => {
-    setSelectedItems(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    );
+  const filterLabel = filter.searchQuery
+    ? `“${filter.searchQuery}”`
+    : filter.favoritesOnly
+      ? 'Starred'
+      : filter.category !== 'all'
+        ? filter.category
+        : 'Everything';
+
+  const toggleExpand = (id: string) => {
+    hapticTap();
+    setExpandedId(prev => (prev === id ? null : id));
+    setEditingId(null);
+    setConfirmingDelete(null);
   };
 
-  const handleSelectAll = () => {
-    setSelectedItems(
-      selectedItems.length === filteredContent.length
-        ? []
-        : filteredContent.map(item => item.id)
-    );
+  const startEdit = (item: SavedContent) => {
+    setEditingId(item.id);
+    setEditText(item.contentText);
   };
 
-  const handleBulkFavorite = () => {
-    bulkToggleFavorite(selectedItems);
-    toast.success(`Updated favorites for ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
-    setSelectedItems([]);
+  const saveEdit = (id: string) => {
+    if (!editText.trim()) return;
+    updateContent(id, { contentText: editText.trim() });
+    setEditingId(null);
+    toast.success('Entry updated');
   };
 
-  const handleBulkExport = () => {
-    exportContent(selectedItems);
-    toast.success(`Exported ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
-    setSelectedItems([]);
-  };
-
-  const handleBulkDelete = () => {
-    if (!window.confirm(`Delete ${selectedItems.length} selected item${selectedItems.length !== 1 ? 's' : ''}? This cannot be undone.`)) {
+  const handleDelete = (id: string) => {
+    if (confirmingDelete !== id) {
+      setConfirmingDelete(id);
       return;
     }
-    bulkDeleteContent(selectedItems);
-    toast.success(`Deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
-    setSelectedItems([]);
+    deleteContent(id);
+    setConfirmingDelete(null);
+    setExpandedId(null);
+    toast.success('Entry removed');
   };
 
-  const stats = React.useMemo(() => {
-    const total = filteredContent.length;
-    const favorites = filteredContent.filter(c => c.isFavorite).length;
-    const guides = filteredContent.filter(c => c.metadata?.isGuide).length;
-    const types = filteredContent.reduce((acc, item) => {
-      acc[item.contentType] = (acc[item.contentType] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return { total, favorites, guides, types };
-  }, [filteredContent]);
-
   const handleDismissAllGuides = () => {
-    const guideIds = content.filter(c => c.metadata?.isGuide && c.metadata?.canDismiss).map(c => c.id);
+    const guideIds = guides.filter(c => c.metadata?.canDismiss).map(c => c.id);
     bulkDeleteContent(guideIds);
     toast.success(`Dismissed ${guideIds.length} guide${guideIds.length !== 1 ? 's' : ''}`);
   };
 
-  const setDateRange = (start?: string, end?: string) => {
-    const startDate = start ? new Date(start) : filter.dateRange?.start;
-    const endDate = end ? new Date(end) : filter.dateRange?.end;
-    if (!startDate && !endDate) {
-      onFilterChange({ ...filter, dateRange: undefined });
-    } else {
-      onFilterChange({
-        ...filter,
-        dateRange: {
-          start: startDate ?? new Date(0),
-          end: endDate ?? new Date('2100-01-01'),
-        },
-      });
-    }
+  const openLink = (item: SavedContent) => {
+    const url = item.contentType === 'link' ? item.contentText : item.fileUrl;
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="flex-1 h-full flex flex-col">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-header p-6"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <motion.h1
-              key={filter.category}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl font-bold text-primary mb-2 flex items-center gap-3"
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${settings.theme === 'dark' ? 'bg-white' : 'bg-black'}`}>
-                <Database className={settings.theme === 'dark' ? 'text-black' : 'text-white'} size={20} />
-              </div>
-              {filter.category === 'all' ? 'Knowledge Base' : `${filter.category.charAt(0).toUpperCase() + filter.category.slice(1)}`}
-            </motion.h1>
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2 text-gray-400">
-                <BarChart3 size={14} className="text-secondary" />
-                <span className="text-secondary">{stats.total} items</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Star size={14} className="text-yellow-500" />
-                <span className="text-secondary">{stats.favorites} favorites</span>
-              </div>
-              {selectedItems.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <Target size={14} />
-                  <span className="text-secondary">{selectedItems.length} selected</span>
-                </div>
-              )}
-              {stats.guides > 0 && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleDismissAllGuides}
-                  className="flex items-center gap-2 text-secondary hover:text-primary text-sm font-medium transition-colors duration-200"
-                >
-                  <Lightbulb size={14} />
-                  <span>Dismiss all guides ({stats.guides})</span>
-                </motion.button>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Type counts */}
-            <div className="hidden lg:flex items-center gap-4">
-              {Object.entries(stats.types).slice(0, 3).map(([type, count]) => (
-                <div
-                  key={type}
-                  className="flex items-center gap-2 px-3 py-1 glass rounded-full text-xs"
-                >
-                  <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-                  <span className="text-secondary">{type}: {count}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* View Mode Switcher */}
-            <div className="flex items-center gap-1 glass rounded-xl p-1">
-              {[
-                { mode: 'grid', icon: Grid, label: 'Grid' },
-                { mode: 'list', icon: List, label: 'List' },
-                { mode: 'masonry', icon: Layers, label: 'Masonry' },
-              ].map(({ mode, icon: Icon, label }) => (
-                <motion.button
-                  key={mode}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setViewMode(mode as typeof viewMode)}
-                  className={`p-2 rounded-lg transition-all duration-200 ${
-                    viewMode === mode
-                      ? settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
-                      : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
-                  }`}
-                  title={label}
-                >
-                  <Icon size={16} />
-                </motion.button>
-              ))}
-            </div>
-
-            {/* Advanced Filters */}
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-2 rounded-xl glass hover:bg-white/10 transition-all duration-200 ${
-                showFilters
-                  ? settings.theme === 'dark' ? 'text-white bg-white/20' : 'text-black bg-black/20'
-                  : 'text-secondary'
-              }`}
-            >
-              <Filter size={18} />
-            </motion.button>
-
-            {/* Sort Dropdown */}
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="px-4 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
-            >
-              <option value="recent">Most Recent</option>
-              <option value="oldest">Oldest First</option>
-              <option value="favorites">Favorites First</option>
-              <option value="alphabetical">Alphabetical</option>
-            </select>
-          </div>
+    <div className="max-w-3xl mx-auto px-6 py-8 lg:py-12 pb-32 sm:pb-16">
+      {/* Chapter head */}
+      <div className="flex items-end justify-between border-b-[1.5px] border-ink pb-5 mb-2">
+        <div>
+          <div className="font-label text-[10px] text-accent mb-2">[ the book ]</div>
+          <h1 className="font-display text-4xl lg:text-5xl tracking-tight capitalize text-ink">{filterLabel}</h1>
         </div>
-
-        {/* Filters Panel */}
-        <AnimatePresence>
-          {showFilters && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="glass-card rounded-2xl p-6 mb-6"
+        <div className="flex items-center gap-4 pb-1">
+          <span className="font-label text-[9px] text-ink-faint tabular-nums">
+            {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
+          </span>
+          {guides.length > 0 && (
+            <button
+              onClick={handleDismissAllGuides}
+              className="font-label text-[9px] text-ink-faint hover:text-accent transition-colors flex items-center gap-1"
             >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Group By */}
-                <div>
-                  <label className="block text-primary font-medium mb-3">Group By</label>
-                  <select
-                    value={groupBy}
-                    onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
-                    className="w-full px-4 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                  >
-                    <option value="none">No Grouping</option>
-                    <option value="date">Date</option>
-                    <option value="category">Category</option>
-                    <option value="type">Content Type</option>
-                  </select>
-                </div>
-
-                {/* Date Range */}
-                <div>
-                  <label className="block text-primary font-medium mb-3">Date Range</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      onChange={(e) => setDateRange(e.target.value || undefined, undefined)}
-                      className="flex-1 px-3 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
-                    />
-                    <input
-                      type="date"
-                      onChange={(e) => setDateRange(undefined, e.target.value || undefined)}
-                      className="flex-1 px-3 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
-                    />
-                  </div>
-                  {filter.dateRange && (
-                    <button
-                      onClick={() => onFilterChange({ ...filter, dateRange: undefined })}
-                      className="mt-2 text-xs text-emerald-500 hover:text-emerald-600"
-                    >
-                      Clear date range
-                    </button>
-                  )}
-                </div>
-
-                {/* Quick Filters */}
-                <div>
-                  <label className="block text-primary font-medium mb-3">Quick Filters</label>
-                  <div className="flex flex-wrap gap-2">
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onFilterChange({ ...filter, favoritesOnly: !filter.favoritesOnly })}
-                      className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all duration-200 ${
-                        filter.favoritesOnly
-                          ? settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
-                          : 'glass-button text-secondary hover:text-primary'
-                      }`}
-                    >
-                      <Star size={14} />
-                      Favorites
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => onFilterChange({
-                        ...filter,
-                        category: 'all',
-                        contentType: '',
-                        tags: [],
-                        searchQuery: '',
-                        favoritesOnly: false,
-                        dateRange: undefined,
-                      })}
-                      className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm glass-button text-secondary hover:text-primary transition-all duration-200"
-                    >
-                      <Filter size={14} />
-                      Clear All
-                    </motion.button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+              <Lightbulb size={10} /> Dismiss all guides ({guides.length})
+            </button>
           )}
-        </AnimatePresence>
-
-        {/* Selection Actions */}
-        <AnimatePresence>
-          {selectedItems.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center justify-between glass-card rounded-2xl p-4 mb-6"
-            >
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleSelectAll}
-                  className="text-emerald-500 hover:text-emerald-600 text-sm font-medium"
-                >
-                  {selectedItems.length === filteredContent.length ? 'Deselect All' : 'Select All'}
-                </button>
-                <span className="text-secondary text-sm">
-                  {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {[
-                  { icon: Star, label: 'Toggle Favorite', action: handleBulkFavorite },
-                  { icon: Download, label: 'Export Selected', action: handleBulkExport },
-                  { icon: Trash2, label: 'Delete Selected', action: handleBulkDelete },
-                ].map((action) => (
-                  <motion.button
-                    key={action.label}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={action.action}
-                    className="p-2 rounded-lg glass-button transition-all duration-200 text-secondary hover:text-primary"
-                    title={action.label}
-                  >
-                    <action.icon size={16} />
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-
-      {/* Content Area */}
-      <div className="flex-1 overflow-hidden pb-16 sm:pb-0">
-        {filteredContent.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center h-full p-8"
+          <button
+            onClick={() => { hapticTap(); setSortAsc(v => !v); }}
+            className="font-label text-[9px] text-ink-soft hover:text-ink transition-colors flex items-center gap-1"
+            title="Flip order"
           >
-            <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-8 ${
-              settings.theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
-            }`}>
-              <Search className="text-secondary" size={48} />
-            </div>
-            <h3 className="text-2xl font-bold text-primary mb-4">No items found</h3>
-            <p className="text-secondary text-center max-w-md mb-8 leading-relaxed">
-              {filter.searchQuery
-                ? `No results for "${filter.searchQuery}". Try adjusting your search terms or filters.`
-                : 'Start building your knowledge base. Add notes, links, and files — they are organized for you automatically.'}
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onFilterChange({
-                category: 'all',
-                contentType: '',
-                tags: [],
-                searchQuery: '',
-                favoritesOnly: false,
-                dateRange: undefined,
-                sortBy: 'recent',
-                viewMode: 'grid',
-              })}
-              className={`px-6 py-3 font-semibold rounded-xl transition-all duration-200 shadow-lg ${
-                settings.theme === 'dark'
-                  ? 'bg-white text-black hover:bg-gray-100'
-                  : 'bg-black text-white hover:bg-gray-900'
-              }`}
-            >
-              Clear Filters
-            </motion.button>
-          </motion.div>
-        ) : (
-          <div className="p-6 h-full overflow-y-auto custom-scrollbar">
-            {Object.entries(groupedContent).map(([groupName, groupItems]) => (
-              <div key={groupName} className="mb-8">
-                {groupBy !== 'none' && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="sticky top-0 z-20 flex items-center gap-3 mb-6 -mx-2 px-2 py-2 backdrop-blur-xl bg-white/70 dark:bg-gray-950/70 rounded-xl"
-                  >
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    <h2 className="text-lg font-bold text-primary">{groupName}</h2>
-                    <div className={`flex-1 h-px bg-gradient-to-r ${settings.theme === 'dark' ? 'from-white/20' : 'from-black/20'} to-transparent`} />
-                    <span className="text-secondary text-sm tabular-nums">{groupItems.length} item{groupItems.length !== 1 ? 's' : ''}</span>
-                  </motion.div>
-                )}
+            <ArrowUpDown size={10} /> {sortAsc ? 'oldest first' : 'newest first'}
+          </button>
+        </div>
+      </div>
 
-                <motion.div
-                  layout
-                  className={`grid gap-6 ${
-                    viewMode === 'grid'
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
-                      : viewMode === 'list'
-                      ? 'grid-cols-1'
-                      : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+      {/* Guides: quiet paper margin-notes, one at a time */}
+      {guides.length > 0 && (
+        <div className="my-6">
+          {guides.slice(0, 1).map(guide => (
+            <motion.div
+              key={guide.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="card-ink-static rounded-sm p-5 relative -rotate-[0.4deg]"
+            >
+              <div
+                aria-hidden
+                className="absolute -top-2.5 left-10 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)]"
+                style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+              />
+              <div className="flex items-center justify-between mb-3">
+                <span className="font-label text-[9px] text-accent">
+                  Step {guide.metadata?.guideStep ?? 1}/{6} · getting started
+                </span>
+                <span className="stamp !py-0.5 !px-1.5 text-[8px] text-ink-faint">guide</span>
+              </div>
+              <p className="font-display text-lg leading-relaxed text-ink mb-4">
+                {guide.contentText}
+              </p>
+              <div className="flex items-center gap-4 font-label text-[9px]">
+                <button
+                  onClick={() => { hapticTap(); deleteContent(guide.id); }}
+                  className="btn-ink haptic px-4 py-1.5 rounded-sm"
+                >
+                  got it →
+                </button>
+                <button
+                  onClick={handleDismissAllGuides}
+                  className="text-ink-faint hover:text-accent transition-colors"
+                >
+                  dismiss all
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {entries.length === 0 && guides.length === 0 && (
+        <div className="border-[1.5px] border-dashed border-[var(--ink-line)] rounded-sm py-20 text-center mt-8">
+          {filter.searchQuery || filter.tags.length > 0 || filter.contentType || filter.favoritesOnly || filter.category !== 'all' ? (
+            <>
+              <Search size={22} className="text-ink-faint mx-auto mb-4" />
+              <p className="font-display italic text-xl text-ink-soft mb-2">nothing on this page</p>
+              <p className="font-label text-[10px] text-ink-faint mb-6">try loosening the filters</p>
+              <button
+                onClick={() => onFilterChange({ ...filter, category: 'all', contentType: '', tags: [], searchQuery: '', favoritesOnly: false, dateRange: undefined })}
+                className="btn-paper haptic px-5 py-2.5 rounded-sm font-label text-[10px]"
+              >
+                Clear Filters
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="font-display italic text-xl text-ink-soft mb-6">the book is empty — write the first line</p>
+              <button
+                onClick={() => { hapticTap(); setUploadModalOpen(true); }}
+                className="btn-ink haptic px-6 py-3 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
+              >
+                <Plus size={13} /> first entry
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Days */}
+      {days.map(({ heading, items }) => (
+        <section key={heading} className="mt-8">
+          <div className="sticky top-0 z-10 bg-paper flex items-baseline gap-3 py-2">
+            <h2 className="font-display text-2xl text-ink">{heading}</h2>
+            <div className="flex-1 border-b border-[var(--ink-line)] translate-y-[-6px]" />
+            <span className="font-label text-[9px] text-ink-faint tabular-nums">{items.length}</span>
+          </div>
+
+          <div>
+            {items.map((item) => {
+              const expanded = expandedId === item.id;
+              const editing = editingId === item.id;
+              return (
+                <motion.article
+                  key={item.id}
+                  layout="position"
+                  className={`group grid grid-cols-[64px_1fr] gap-4 border-b border-[var(--ink-line)] transition-colors ${
+                    expanded ? 'bg-paper-raised -mx-4 px-4 border-[var(--ink-line)]' : 'hover:bg-[var(--accent-soft)]/40'
                   }`}
                 >
-                  <AnimatePresence>
-                    {groupItems.map((item, index) => (
-                      <motion.div
-                        key={item.id}
-                        layout
-                        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                        transition={{
-                          delay: Math.min(index * 0.03, 0.3),
-                          type: 'spring',
-                          stiffness: 300,
-                          damping: 30,
+                  {/* Margin column */}
+                  <div className="py-3.5 text-right select-none">
+                    <div className="font-label text-[9px] text-ink-faint leading-none mb-1.5">{timeLabel(item.timestamp)}</div>
+                    <div className="text-ink-faint text-sm leading-none" title={item.contentType}>{typeGlyphs[item.contentType]}</div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); hapticTap(); onToggleFavorite(item.id); }}
+                      aria-label="Star entry"
+                      className={`mt-2 transition-opacity ${item.isFavorite ? 'opacity-100 text-accent' : 'opacity-0 group-hover:opacity-100 text-ink-faint hover:text-accent'}`}
+                    >
+                      <Star size={12} fill={item.isFavorite ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+
+                  {/* Entry body */}
+                  <div className="py-3.5 min-w-0 cursor-pointer" onClick={() => !editing && toggleExpand(item.id)}>
+                    {!editing ? (
+                      <p className={`font-display text-ink leading-relaxed break-words ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
+                        {item.contentType === 'link' ? (
+                          <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
+                            {item.contentText}
+                          </span>
+                        ) : item.contentText}
+                      </p>
+                    ) : (
+                      <textarea
+                        autoFocus
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) saveEdit(item.id);
+                          if (e.key === 'Escape') setEditingId(null);
                         }}
-                        whileHover={{ y: -5 }}
-                        className={viewMode === 'masonry' ? 'break-inside-avoid mb-6' : ''}
-                      >
-                        <ContentCard
-                          content={item}
-                          onToggleFavorite={onToggleFavorite}
-                          isSelected={selectedItems.includes(item.id)}
-                          onSelect={() => handleSelectItem(item.id)}
-                          viewMode={viewMode === 'masonry' ? 'grid' : viewMode}
-                        />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </motion.div>
-              </div>
-            ))}
+                        onClick={(e) => e.stopPropagation()}
+                        rows={Math.min(8, Math.max(2, editText.split('\n').length + 1))}
+                        className="bare-input font-display text-lg w-full bg-transparent text-ink outline-none resize-none border-b-2 border-[var(--accent)] pb-1 caret-[var(--accent)]"
+                      />
+                    )}
+
+                    {/* Tag row (always visible, quiet) */}
+                    {item.tags.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                        {item.tags.slice(0, expanded ? 12 : 4).map(tag => (
+                          <button
+                            key={tag}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              hapticTap();
+                              if (!filter.tags.includes(tag)) setFilter({ ...filter, tags: [...filter.tags, tag] });
+                            }}
+                            className="font-label text-[9px] text-ink-faint hover:text-accent transition-colors"
+                          >
+                            #{tag}
+                          </button>
+                        ))}
+                        {item.reminderDate && (
+                          <span className="font-label text-[9px] text-accent">⏰ reminder</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Unfolded */}
+                    <AnimatePresence>
+                      {expanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                          className="overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {item.fileUrl && item.contentType === 'image' && (
+                            <div className="relative inline-block mt-4 mr-6">
+                              <div
+                                aria-hidden
+                                className="absolute -top-2 left-8 w-14 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] z-10"
+                                style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+                              />
+                              <img src={item.fileUrl} alt="" className="max-h-72 border-[1.5px] border-ink" />
+                            </div>
+                          )}
+                          {item.fileUrl && item.contentType === 'audio' && (
+                            <audio src={item.fileUrl} controls className="w-full mt-4" />
+                          )}
+                          {item.fileUrl && item.contentType === 'video' && (
+                            <video src={item.fileUrl} controls className="max-h-72 mt-4 border-[1.5px] border-ink" />
+                          )}
+
+                          {item.summary && item.summary.length > 0 && !item.contentText.includes(item.summary) && (
+                            <p className="font-display italic text-ink-soft mt-4 pl-4 border-l-2 border-[var(--accent)]">
+                              {item.summary}
+                            </p>
+                          )}
+
+                          {/* Marginalia actions */}
+                          <div className="flex items-center gap-1 mt-5 mb-1 font-label text-[9px] text-ink-soft">
+                            {(item.contentType === 'link' || item.fileUrl) && (
+                              <>
+                                <button onClick={() => openLink(item)} className="hover:text-accent transition-colors flex items-center gap-1">
+                                  open <ExternalLink size={9} />
+                                </button>
+                                <span className="text-ink-faint mx-2">·</span>
+                              </>
+                            )}
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(item.contentText); toast.success('Copied'); }}
+                              className="hover:text-accent transition-colors"
+                            >
+                              copy
+                            </button>
+                            <span className="text-ink-faint mx-2">·</span>
+                            <button onClick={() => startEdit(item)} className="hover:text-accent transition-colors">
+                              edit
+                            </button>
+                            <span className="text-ink-faint mx-2">·</span>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className={`transition-colors ${confirmingDelete === item.id ? 'text-accent' : 'hover:text-accent'}`}
+                            >
+                              {confirmingDelete === item.id ? 'sure? tap again' : 'remove'}
+                            </button>
+                            <span className="ml-auto text-ink-faint capitalize">{item.category} · {item.sourceApp.toLowerCase()}</span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {editing && (
+                      <div className="flex items-center gap-3 mt-3">
+                        <button onClick={(e) => { e.stopPropagation(); saveEdit(item.id); }} className="btn-ink haptic px-4 py-1.5 rounded-sm font-label text-[9px]">
+                          save
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="font-label text-[9px] text-ink-faint hover:text-ink">
+                          cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </motion.article>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </section>
+      ))}
     </div>
   );
 }
