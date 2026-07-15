@@ -177,7 +177,11 @@ function App() {
 
   if (needsEncryptionUnlock) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-8">
+      <div className="min-h-screen bg-paper dot-grid noise flex flex-col items-center justify-center p-8">
+        <div className="flex items-baseline gap-1 mb-10">
+          <span className="font-display text-2xl tracking-tight text-ink">supermind</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+        </div>
         <div className="w-full max-w-md">
           <EncryptionSetup onComplete={unlockEncryption} isLogin={true} />
         </div>
@@ -891,11 +895,12 @@ function App() {
       />
 
       {isEncryptionModalOpen && (
-        <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${isDark ? 'bg-black/60' : 'bg-white/60'}`}>
-          <div className="glass-card rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 bg-black/40">
+          <div className="max-w-md w-full max-h-[90vh] overflow-y-auto relative">
             <button
               onClick={() => setEncryptionModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-lg text-secondary hover:text-primary transition-colors"
+              className="absolute top-3 right-3 z-10 p-2 text-ink-faint hover:text-ink transition-colors"
+              aria-label="Close"
             >
               <X size={18} />
             </button>

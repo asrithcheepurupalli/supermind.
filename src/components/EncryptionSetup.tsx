@@ -1,8 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Key, Eye, EyeOff, AlertCircle, CheckCircle, Lock, Fingerprint } from 'lucide-react';
+import { Eye, EyeOff, Check, AlertCircle } from 'lucide-react';
 import { encryptionManager } from '../utils/encryption';
-import Button from './ui/Button';
 import toast from 'react-hot-toast';
 
 interface EncryptionSetupProps {
@@ -38,19 +37,19 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
     setPassword(generated);
     setConfirmPassword(generated);
     setUseGeneratedPassword(true);
-    toast.success('Secure password generated! Please save it safely.');
+    toast.success('Passphrase generated — save it somewhere safe.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isLogin && password !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error('Passphrases do not match');
       return;
     }
 
     if (!isLogin && passwordStrength < 4) {
-      toast.error('Please use a stronger password');
+      toast.error('Please use a stronger passphrase');
       return;
     }
 
@@ -59,113 +58,93 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
     try {
       await encryptionManager.generateMasterKey(password);
       onComplete(password);
-      toast.success(isLogin ? 'Encryption key loaded' : 'Encryption setup complete');
     } catch {
-      toast.error('Failed to setup encryption');
+      toast.error('Failed to set up encryption');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const getStrengthColor = (strength: number): string => {
-    if (strength < 2) return 'bg-red-500';
-    if (strength < 4) return 'bg-yellow-500';
-    if (strength < 5) return 'bg-blue-500';
-    return 'bg-emerald-500';
-  };
-
-  const getStrengthText = (strength: number): string => {
-    if (strength < 2) return 'Weak';
-    if (strength < 4) return 'Fair';
-    if (strength < 5) return 'Good';
-    return 'Strong';
-  };
+  const strengthWord = passwordStrength < 2 ? 'weak' : passwordStrength < 4 ? 'fair' : passwordStrength < 5 ? 'good' : 'strong';
 
   return (
-    <div className="max-w-md mx-auto">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
-        <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <Shield className="text-white" size={32} />
+    <div className="card-ink-static rounded-sm p-8 relative rotate-[-0.5deg]">
+      <div className="flex items-start justify-between mb-6">
+        <div className="font-label text-[10px] text-ink-faint">
+          {isLogin ? 'vault · locked' : 'vault · setup'}
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2">
-          {isLogin ? 'Unlock Your Encrypted Data' : 'Secure Your Mind'}
-        </h2>
-        <p className="text-gray-400">
-          {isLogin 
-            ? 'Enter your encryption password to access your data'
-            : 'Set up end-to-end encryption to protect your content'
-          }
-        </p>
-      </motion.div>
+        <span className="stamp text-[10px] text-accent">{isLogin ? 'sealed' : 'aes-256'}</span>
+      </div>
+
+      <h2 className="font-display text-3xl md:text-4xl tracking-tight mb-3 text-ink">
+        {isLogin ? <>Unlock Your <em className="marker">Encrypted Data</em></> : <>Choose your <em className="marker">passphrase</em></>}
+      </h2>
+      <p className="text-ink-soft text-sm leading-relaxed mb-8">
+        {isLogin
+          ? 'Enter your passphrase to open the vault.'
+          : 'It becomes your encryption key — never stored, never sent. Lose it and the vault stays sealed forever.'}
+      </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-white font-medium mb-2">
-            {isLogin ? 'Encryption Password' : 'Master Password'}
+          <label className="font-label text-[10px] text-ink-soft block mb-2">
+            {isLogin ? 'passphrase' : 'passphrase'}
           </label>
           <div className="relative">
-            <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
             <input
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your master password"
-              className="w-full pl-10 pr-12 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              autoFocus
+              className="bare-input w-full bg-paper border-[1.5px] border-ink rounded-sm px-4 py-3 pr-12 text-ink outline-none focus:border-[var(--accent)] transition-colors font-medium"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink transition-colors"
+              aria-label="Toggle passphrase visibility"
             >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          
+
           {!isLogin && password && (
-            <div className="mt-2">
-              <div className="flex gap-1 mb-1">
+            <div className="mt-3 flex items-center gap-3">
+              <div className="flex gap-1 flex-1">
                 {[...Array(6)].map((_, i) => (
                   <div
                     key={i}
-                    className={`h-1 flex-1 rounded-full transition-colors duration-200 ${
-                      passwordStrength > i ? getStrengthColor(passwordStrength) : 'bg-gray-700'
+                    className={`h-[5px] flex-1 rounded-full border border-ink transition-colors duration-200 ${
+                      passwordStrength > i ? 'bg-accent' : 'bg-paper'
                     }`}
                   />
                 ))}
               </div>
-              <p className="text-xs text-gray-400">
-                Password strength: <span className={passwordStrength >= 4 ? 'text-emerald-400' : 'text-yellow-400'}>
-                  {getStrengthText(passwordStrength)}
-                </span>
-              </p>
+              <span className="font-label text-[9px] text-ink-soft w-12 text-right">{strengthWord}</span>
             </div>
           )}
         </div>
 
         {!isLogin && (
           <div>
-            <label className="block text-white font-medium mb-2">Confirm Password</label>
+            <label className="font-label text-[10px] text-ink-soft block mb-2">confirm</label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Confirm your master password"
-                className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className="bare-input w-full bg-paper border-[1.5px] border-ink rounded-sm px-4 py-3 pr-12 text-ink outline-none focus:border-[var(--accent)] transition-colors font-medium"
                 required
               />
               {confirmPassword && (
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {password === confirmPassword ? (
-                    <CheckCircle className="text-emerald-400" size={18} />
+                    <Check size={16} className="text-accent" />
                   ) : (
-                    <AlertCircle className="text-red-400" size={18} />
+                    <AlertCircle size={16} className="text-ink-faint" />
                   )}
                 </div>
               )}
@@ -174,67 +153,40 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
         )}
 
         {!isLogin && (
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
-            <div className="flex items-start gap-3">
-              <Fingerprint className="text-blue-400 mt-0.5" size={18} />
-              <div>
-                <h4 className="text-blue-400 font-medium mb-1">Need a secure password?</h4>
-                <p className="text-gray-400 text-sm mb-3">
-                  We can generate a cryptographically secure password for you.
-                </p>
-                <button
-                  type="button"
-                  onClick={generateSecurePassword}
-                  className="text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
-                >
-                  Generate Secure Password
-                </button>
-              </div>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={generateSecurePassword}
+            className="font-label text-[10px] text-accent hover:underline"
+          >
+            → generate one for me
+          </button>
         )}
 
-        <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="text-emerald-400 mt-0.5" size={18} />
-            <div className="text-sm">
-              <h4 className="text-emerald-400 font-medium mb-1">Zero-Knowledge Security</h4>
-              <ul className="text-gray-400 space-y-1">
-                <li>• Your password never leaves your device</li>
-                <li>• All encryption happens locally</li>
-                <li>• Even we cannot access your data</li>
-                <li>• Military-grade AES-256 encryption</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <Button
+        <button
           type="submit"
-          loading={isLoading}
-          className="w-full"
-          disabled={!password || (!isLogin && password !== confirmPassword)}
+          disabled={isLoading || !password || (!isLogin && password !== confirmPassword)}
+          className="btn-ink haptic w-full py-3.5 rounded-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
         >
-          {isLogin ? 'Unlock Data' : 'Setup Encryption'}
-        </Button>
+          {isLoading ? 'working…' : isLogin ? 'Unlock Data' : 'Setup Encryption'}
+        </button>
       </form>
 
       {useGeneratedPassword && (
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mt-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4"
+          className="mt-6 border-[1.5px] border-ink rounded-sm p-4 bg-[var(--accent-soft)]"
         >
-          <div className="flex items-start gap-3">
-            <AlertCircle className="text-yellow-400 mt-0.5" size={18} />
-            <div className="text-sm">
-              <h4 className="text-yellow-400 font-medium mb-1">Important: Save Your Password</h4>
-              <p className="text-gray-400">
-                Please save this password in a secure location. If you lose it, your encrypted data cannot be recovered.
-              </p>
-            </div>
-          </div>
+          <p className="font-label text-[9px] text-ink leading-relaxed">
+            write it down. there is no reset — that's the point of real encryption.
+          </p>
         </motion.div>
+      )}
+
+      {!isLogin && !useGeneratedPassword && (
+        <p className="font-label text-[9px] text-ink-faint mt-6 leading-relaxed">
+          key derived on-device (pbkdf2 · 250k) — lives in memory only
+        </p>
       )}
     </div>
   );
