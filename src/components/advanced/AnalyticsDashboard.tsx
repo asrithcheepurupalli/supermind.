@@ -96,9 +96,11 @@ export default function AnalyticsDashboard() {
                   <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 rounded-lg bg-gray-900 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-lg">
                     {label}: <span className="font-semibold tabular-nums">{day.count}</span>
                   </div>
-                  <div
+                  <motion.div
+                    initial={{ height: '3%' }}
+                    animate={{ height: `${Math.max(3, (day.count / maxActivity) * 100)}%` }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
                     className={`w-full chart-bar ${day.count === 0 ? 'opacity-25' : ''}`}
-                    style={{ height: `${Math.max(3, (day.count / maxActivity) * 100)}%` }}
                   />
                 </div>
               );

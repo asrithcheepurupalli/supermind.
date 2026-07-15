@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Network, MousePointerClick } from 'lucide-react';
+import { Network, MousePointerClick, Pause, Play, Shuffle } from 'lucide-react';
 import { SavedContent } from '../types';
 import { useStore, defaultFilter } from '../store/useStore';
 import { hapticTap } from '../utils/haptics';
@@ -87,6 +87,10 @@ export default function KnowledgeGraph() {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [hoveredTag, setHoveredTag] = React.useState<string | null>(null);
+  const [paused, setPaused] = React.useState(false);
+  const [seed, setSeed] = React.useState(0);
+  const pausedRef = React.useRef(false);
+  pausedRef.current = paused;
   const hoverRef = React.useRef<number>(-1);
   const isDark = settings.theme === 'dark' ||
     (settings.theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -159,6 +163,10 @@ export default function KnowledgeGraph() {
     window.addEventListener('resize', resize);
 
     const step = () => {
+      if (pausedRef.current) {
+        animationFrame = requestAnimationFrame(step);
+        return;
+      }
       time += 0.008;
 
       // Physics: pairwise repulsion, spring edges, gentle centering.
@@ -295,7 +303,7 @@ export default function KnowledgeGraph() {
       canvas.removeEventListener('click', handleClick);
       window.removeEventListener('resize', resize);
     };
-  }, [content, isDark, setFilter, setActiveView]);
+  }, [content, isDark, setFilter, setActiveView, seed]);
 
   return (
     <div className="h-full flex flex-col p-6 max-w-7xl mx-auto w-full">
@@ -335,7 +343,26 @@ export default function KnowledgeGraph() {
             </p>
           </div>
         ) : (
-          <canvas ref={canvasRef} className="absolute inset-0" />
+          <>
+            <canvas ref={canvasRef} className="absolute inset-0" />
+            {/* Simulation controls */}
+            <div className="absolute top-4 right-4 flex gap-2">
+              <button
+                onClick={() => setPaused(p => !p)}
+                title={paused ? 'Resume motion' : 'Pause motion'}
+                className="haptic w-9 h-9 rounded-xl glass-button flex items-center justify-center text-secondary hover:text-primary"
+              >
+                {paused ? <Play size={14} /> : <Pause size={14} />}
+              </button>
+              <button
+                onClick={() => { setPaused(false); setSeed(s => s + 1); }}
+                title="Shuffle layout"
+                className="haptic w-9 h-9 rounded-xl glass-button flex items-center justify-center text-secondary hover:text-primary"
+              >
+                <Shuffle size={14} />
+              </button>
+            </div>
+          </>
         )}
       </motion.div>
     </div>
