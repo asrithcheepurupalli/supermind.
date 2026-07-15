@@ -10,7 +10,7 @@ Most note apps are a database you rent. This one is a notebook you own. Everythi
 
 ## What it does
 
-**Capture.** Press Ctrl+N (or Cmd+N) anywhere and start typing. Paste a link, drop in an image, a PDF, an audio file. Small files are embedded whole so they survive reloads; big ones keep their name and metadata.
+**Capture.** This is the whole product, so it works from everywhere. Press Ctrl+N (or Cmd+N) and start typing. Paste text, a link, or an image anywhere in the app, outside a text field, and it files itself on the spot. Install it on a phone and it shows up in the share sheet, so anything you can share becomes a note. You can even write your first thought on the landing page before you have a profile; it will be waiting inside, already filed. Small files are embedded whole so they survive reloads; big ones keep their name and metadata.
 
 **Organize.** As you save, the app tags and categorizes each entry and writes a short summary for longer ones. If a note mentions a deadline or a follow-up, it becomes a reminder. All of this is plain heuristics running in your browser. No model, no API calls, and the code doesn't pretend otherwise.
 

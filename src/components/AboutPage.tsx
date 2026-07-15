@@ -427,7 +427,7 @@ export default function AboutPage({ onBack }: AboutPageProps) {
               <p>
                 ⌘N opens a fresh page from anywhere in the app. You write the way you
                 talk. There are no fields to fill, no folder to choose, no save button
-                to find. The friction is the enemy; the keystroke is the whole ritual.
+                to find. The friction is the enemy; the keystroke is the whole ritual. And when the thought arrives somewhere else, paste it anywhere in the app or share it from your phone, and it files itself the same way.
               </p>
             </Step>
             <Step index={1} kicker="ii · organize" title="A librarian reads it." onActive={onActive}>

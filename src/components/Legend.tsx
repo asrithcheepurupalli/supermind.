@@ -9,6 +9,7 @@ const GROUPS: Array<{ title: string; rows: Array<{ keys: string[]; action: strin
     rows: [
       { keys: ['⌘', 'K'], action: 'command palette' },
       { keys: ['⌘', 'N'], action: 'a fresh page' },
+      { keys: ['⌘', 'V'], action: 'paste anything, it files itself' },
       { keys: ['⌘', ','], action: 'adjustments' },
       { keys: ['?'], action: 'this legend' },
       { keys: ['esc'], action: 'close whatever is open' },

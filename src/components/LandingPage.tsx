@@ -329,6 +329,17 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
   const { scrollY, scrollYProgress } = useScroll();
   const collageY = useTransform(scrollY, [0, 700], [0, -60]);
 
+  // The hero capture line: stash the thought so it can be filed the moment
+  // the notebook exists.
+  const [firstThought, setFirstThought] = React.useState('');
+  const startWithThought = () => {
+    const text = firstThought.trim();
+    if (text) {
+      try { localStorage.setItem('supermind_first_thought', text); } catch { /* private mode */ }
+    }
+    onGetStarted();
+  };
+
   // ⌘K works right here on the landing page — it takes you into the notebook.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -345,7 +356,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
     {
       num: '01',
       title: 'Capture without friction',
-      body: 'Notes, links, images, files. One keystroke to save, zero forms to fill. Your thought lands on paper before it evaporates.',
+      body: 'Press ⌘N anywhere. Paste straight onto the page. Share from your phone. However a thought arrives, it lands on paper before it evaporates.',
       icon: PenLine,
       demo: (
         <div className="card-ink-static rounded-sm p-5 rotate-[-1deg]">
@@ -543,6 +554,41 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
               an organizer that lives on your device, and turns up the moment you need it.
             </motion.p>
 
+            {/* The hero feature, live: write a real thought right here. It
+                travels through signup and becomes the first entry. */}
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.22 }}
+              className="max-w-md mb-8"
+            >
+              <div className="relative">
+                <input
+                  type="text"
+                  value={firstThought}
+                  onChange={(e) => setFirstThought(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && startWithThought()}
+                  placeholder="Try it. Write a thought, keep it forever…"
+                  aria-label="Write your first thought"
+                  className="bare-input w-full bg-transparent font-display italic text-xl text-ink placeholder:text-[var(--ink-faint)] outline-none border-b-2 border-ink focus:border-[var(--accent)] transition-colors pb-2 pr-10 caret-[var(--accent)]"
+                />
+                {firstThought.trim() && (
+                  <button
+                    onClick={startWithThought}
+                    aria-label="File this thought and open your notebook"
+                    className="haptic absolute right-0 bottom-2.5 text-accent hover:translate-x-0.5 transition-transform"
+                  >
+                    <ArrowRight size={18} />
+                  </button>
+                )}
+              </div>
+              <p className="font-label text-[9px] text-ink-faint mt-2">
+                {firstThought.trim()
+                  ? 'press enter · it will be waiting inside, already filed'
+                  : 'this line is real. whatever you write here becomes your first entry.'}
+              </p>
+            </motion.div>
+
             <motion.div
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -550,7 +596,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
               className="flex items-center gap-5"
             >
               <button
-                onClick={onGetStarted}
+                onClick={startWithThought}
                 className="btn-ink haptic px-8 py-4 rounded-sm font-semibold text-base inline-flex items-center gap-3"
               >
                 Open your notebook

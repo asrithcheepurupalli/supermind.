@@ -25,8 +25,31 @@ import MadeBadge from './components/MadeBadge';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
-import { hapticTap } from './utils/haptics';
+import { hapticTap, hapticSuccess } from './utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
+import type { SavedContent } from './types';
+
+// Build a capture item from raw text; single URLs become links.
+const makeCapture = (text: string, fileUrl?: string, contentType?: SavedContent['contentType']): SavedContent => {
+  const isUrl = !fileUrl && /^https?:\/\/\S+$/i.test(text) && !text.includes('\n');
+  let sourceApp = 'Note';
+  if (isUrl) {
+    try { sourceApp = new URL(text).hostname; } catch { sourceApp = 'Link'; }
+  }
+  return {
+    id: `item_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    contentText: text,
+    contentType: contentType ?? (isUrl ? 'link' : 'text'),
+    sourceApp: fileUrl ? 'Clipboard' : sourceApp,
+    timestamp: new Date(),
+    tags: [],
+    summary: '',
+    fileUrl,
+    userId: 'local',
+    category: isUrl ? 'articles' : 'personal',
+    isFavorite: false,
+  };
+};
 
 function App() {
   const {
@@ -146,6 +169,64 @@ function App() {
   }, [settings.theme]);
 
 
+  // Capture, everywhere: paste anything outside a text field and it files
+  // itself. Images become plates; single URLs become links.
+  const canCapture = isAuthenticated && !(user?.encryptionEnabled && !isEncryptionSetup);
+  React.useEffect(() => {
+    const onPaste = async (e: ClipboardEvent) => {
+      if (!canCapture) return;
+      const el = document.activeElement;
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        (el instanceof HTMLElement && el.isContentEditable)
+      ) return;
+
+      const imageItem = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'));
+      if (imageItem) {
+        const file = imageItem.getAsFile();
+        if (file && file.size <= 1.5 * 1024 * 1024) {
+          e.preventDefault();
+          const fileUrl = await new Promise<string>((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(r.result as string);
+            r.onerror = () => reject(r.error);
+            r.readAsDataURL(file);
+          });
+          await addContent({ ...makeCapture(file.name || 'pasted image', fileUrl, 'image'), metadata: { fileSize: file.size } });
+          hapticSuccess();
+          toast.success('Filed from your clipboard');
+          return;
+        }
+      }
+
+      const text = e.clipboardData?.getData('text')?.trim();
+      if (!text) return;
+      e.preventDefault();
+      await addContent(makeCapture(text));
+      hapticSuccess();
+      toast.success('Filed from your clipboard');
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [canCapture, addContent]);
+
+  // PWA share target: content shared from another app arrives as URL params.
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shared = [params.get('title'), params.get('text'), params.get('url')]
+      .filter(Boolean).join('\n').trim();
+    if (!shared) return;
+    window.history.replaceState({}, '', window.location.pathname);
+    if (canCapture) {
+      addContent(makeCapture(shared)).then(() => toast.success('Filed from share'));
+    } else {
+      try { localStorage.setItem('supermind_first_thought', shared); } catch { /* private mode */ }
+    }
+    // Run once on mount with whatever auth state the app booted into.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleCreateProfile = async (name: string, email: string, encryptionPassword?: string) => {
     const newUser = {
       id: `local_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
@@ -158,6 +239,16 @@ function App() {
     toast.success(`Welcome, ${newUser.name}.`);
     if (encryptionPassword) {
       await setupEncryption(encryptionPassword);
+    }
+    // If they wrote a thought on the landing page, it becomes entry one.
+    let pending: string | null = null;
+    try {
+      pending = localStorage.getItem('supermind_first_thought');
+      localStorage.removeItem('supermind_first_thought');
+    } catch { /* private mode */ }
+    if (pending?.trim()) {
+      await addContent(makeCapture(pending.trim()));
+      toast('Your first thought is already filed.');
     }
   };
 
