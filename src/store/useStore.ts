@@ -59,10 +59,12 @@ interface AppState {
 
   // UI State
   filter: FilterState;
+  activeView: 'home' | 'timeline' | 'graph' | 'analytics' | 'insights' | 'profile';
   isUploadModalOpen: boolean;
   isSettingsModalOpen: boolean;
   settingsSection: string;
   isEncryptionModalOpen: boolean;
+  isCommandPaletteOpen: boolean;
   selectedContent: SavedContent | null;
 
   // App Settings
@@ -82,6 +84,8 @@ interface AppState {
   deleteContent: (id: string) => void;
   toggleFavorite: (id: string) => void;
   setFilter: (filter: FilterState) => void;
+  setActiveView: (view: AppState['activeView']) => void;
+  setCommandPaletteOpen: (open: boolean) => void;
   setUploadModalOpen: (open: boolean) => void;
   setSettingsModalOpen: (open: boolean, section?: string) => void;
   setEncryptionModalOpen: (open: boolean) => void;
@@ -151,10 +155,12 @@ export const useStore = create<AppState>()(
       encryptedContent: [],
       content: [],
       filter: defaultFilter,
+      activeView: 'home',
       isUploadModalOpen: false,
       isSettingsModalOpen: false,
       settingsSection: 'profile',
       isEncryptionModalOpen: false,
+      isCommandPaletteOpen: false,
       selectedContent: null,
       settings: defaultSettings,
       isLoading: false,
@@ -295,6 +301,8 @@ export const useStore = create<AppState>()(
       },
 
       setFilter: (filter) => set({ filter }),
+      setActiveView: (view) => set({ activeView: view }),
+      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
       setUploadModalOpen: (open) => set({ isUploadModalOpen: open }),
       setSettingsModalOpen: (open, section) =>
         set((state) => ({

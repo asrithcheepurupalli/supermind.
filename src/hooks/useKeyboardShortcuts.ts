@@ -2,17 +2,24 @@ import { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 
 export const useKeyboardShortcuts = () => {
-  const { setUploadModalOpen, setSettingsModalOpen, filter, setFilter } = useStore();
+  const { setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen, filter, setFilter } = useStore();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Ignore if user is typing in an input
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+      const { ctrlKey, metaKey, shiftKey, key } = event;
+      const isModifierPressed = ctrlKey || metaKey;
+
+      // The command palette is global — it opens even while typing.
+      if (key === 'k' && isModifierPressed) {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
         return;
       }
 
-      const { ctrlKey, metaKey, shiftKey, key } = event;
-      const isModifierPressed = ctrlKey || metaKey;
+      // Everything else stays out of the way while the user is typing.
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
 
       switch (key) {
         case 'n':
@@ -26,15 +33,6 @@ export const useKeyboardShortcuts = () => {
           if (isModifierPressed) {
             event.preventDefault();
             setSettingsModalOpen(true);
-          }
-          break;
-        
-        case 'k':
-          if (isModifierPressed) {
-            event.preventDefault();
-            // Focus search input
-            const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
-            searchInput?.focus();
           }
           break;
         
@@ -77,5 +75,5 @@ export const useKeyboardShortcuts = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setUploadModalOpen, setSettingsModalOpen, filter, setFilter]);
+  }, [setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen, filter, setFilter]);
 };

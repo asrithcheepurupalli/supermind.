@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
   Brain, Shield, Star, Grid, Clock, TrendingUp, Sparkles, Database,
-  Network, Lightbulb, Download, Eye, ChevronRight, Tag as TagIcon, CalendarClock,
+  Network, Lightbulb, Download, ChevronRight, Tag as TagIcon, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LandingPage from './components/LandingPage';
@@ -17,13 +17,15 @@ import SecurityBadge from './components/SecurityBadge';
 import AnalyticsDashboard from './components/advanced/AnalyticsDashboard';
 import Toast from './components/ui/Toast';
 import AboutPage from './components/AboutPage';
+import Dashboard from './components/Dashboard';
+import KnowledgeGraph from './components/KnowledgeGraph';
+import CommandPalette from './components/CommandPalette';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { useInsights } from './hooks/useInsights';
+import { hapticTap } from './utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
-
-type ActiveView = 'home' | 'timeline' | 'analytics' | 'insights' | 'profile';
 
 function App() {
   const {
@@ -45,12 +47,14 @@ function App() {
     settings,
     setSettingsModalOpen,
     exportContent,
+    activeView,
+    setActiveView,
+    setCommandPaletteOpen,
   } = useStore();
 
   const [showLanding, setShowLanding] = React.useState(!isAuthenticated);
   const [showAbout, setShowAbout] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
-  const [activeView, setActiveView] = React.useState<ActiveView>('home');
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [quickActions, setQuickActions] = React.useState(false);
   const [showWelcome, setShowWelcome] = React.useState(true);
@@ -184,6 +188,7 @@ function App() {
 
   const viewSwitcher = [
     { id: 'timeline' as const, icon: Clock, label: 'Timeline' },
+    { id: 'graph' as const, icon: Network, label: 'Graph' },
     { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
     { id: 'insights' as const, icon: Brain, label: 'Insights' },
   ];
@@ -274,7 +279,7 @@ function App() {
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    placeholder="Search your knowledge base..."
+                    placeholder="Search everything..."
                     value={filter.searchQuery}
                     onChange={(e) => setFilter({ ...filter, searchQuery: e.target.value })}
                     onFocus={() => setSearchFocused(true)}
@@ -282,10 +287,14 @@ function App() {
                     className="w-full pl-12 pr-16 py-3 glass-input rounded-xl text-primary placeholder-muted transition-all duration-200"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                    <div className={`hidden sm:flex items-center gap-1 text-muted text-xs px-2 py-1 rounded-md ${isDark ? 'bg-gray-800/50' : 'bg-gray-200/50'}`}>
+                    <button
+                      onClick={() => { hapticTap(); setCommandPaletteOpen(true); }}
+                      title="Open command palette"
+                      className={`hidden sm:flex items-center gap-1 text-muted hover:text-primary text-xs px-2 py-1 rounded-md transition-colors ${isDark ? 'bg-gray-800/50' : 'bg-gray-200/50'}`}
+                    >
                       <Command size={10} />
                       <span>K</span>
-                    </div>
+                    </button>
                     {filter.searchQuery && (
                       <motion.button
                         initial={{ scale: 0 }}
@@ -516,118 +525,19 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
-                <div className="relative p-8 lg:p-12">
-                  <div className="relative z-10 text-center max-w-4xl mx-auto">
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="inline-flex items-center gap-2 px-6 py-3 glass rounded-full mb-8"
-                    >
-                      <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center">
-                        <Sparkles className="text-white" size={12} />
-                      </div>
-                      <span className="text-primary font-medium">
-                        Welcome back, {user?.name?.split(' ')[0] || 'friend'}.
-                      </span>
-                    </motion.div>
+                <Dashboard />
+              </motion.div>
+            )}
 
-                    <motion.h1
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-5xl lg:text-7xl font-bold mb-6"
-                    >
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-white dark:via-emerald-400 dark:to-blue-400">
-                        supermind.
-                      </span>
-                    </motion.h1>
-
-                    <motion.p
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-xl lg:text-2xl text-secondary mb-12 max-w-3xl mx-auto leading-relaxed"
-                    >
-                      {content.length === 0
-                        ? 'Your second brain is empty. Capture your first thought, link, or file.'
-                        : `${content.length} item${content.length !== 1 ? 's' : ''} in your knowledge base — all stored privately on this device.`}
-                    </motion.p>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-                    >
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setUploadModalOpen(true)}
-                        className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-lg flex items-center gap-3 ${
-                          isDark ? 'bg-white text-black hover:bg-gray-100' : 'bg-black text-white hover:bg-gray-900'
-                        }`}
-                      >
-                        <Plus size={20} />
-                        {content.length === 0 ? 'Add Your First Item' : 'Add Content'}
-                      </motion.button>
-
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setActiveView('timeline')}
-                        className="px-8 py-4 glass rounded-2xl font-semibold text-lg text-primary transition-all duration-200 shadow-lg flex items-center gap-3"
-                      >
-                        <Eye size={20} />
-                        Browse Timeline
-                      </motion.button>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 40 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                      className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto"
-                    >
-                      {[
-                        {
-                          icon: Shield,
-                          title: settings.security.encryptionEnabled ? 'Encrypted' : 'Local-First',
-                          desc: settings.security.encryptionEnabled
-                            ? 'AES-256 encryption at rest'
-                            : 'Data never leaves your device',
-                          gradient: 'from-emerald-500 to-green-500',
-                        },
-                        {
-                          icon: Zap,
-                          title: 'Instant Search',
-                          desc: 'Fuzzy search across everything',
-                          gradient: 'from-yellow-500 to-orange-500',
-                        },
-                        {
-                          icon: Brain,
-                          title: 'Auto-Organized',
-                          desc: 'Tags & summaries on-device',
-                          gradient: 'from-purple-500 to-pink-500',
-                        },
-                      ].map((feature, index) => (
-                        <motion.div
-                          key={feature.title}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.5 + index * 0.1 }}
-                          whileHover={{ scale: 1.05, y: -5 }}
-                          className="glass rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300"
-                        >
-                          <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mx-auto mb-4`}>
-                            <feature.icon className="text-white" size={24} />
-                          </div>
-                          <h3 className="text-lg font-semibold text-primary mb-2">{feature.title}</h3>
-                          <p className="text-secondary text-sm">{feature.desc}</p>
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </div>
-                </div>
+            {activeView === 'graph' && (
+              <motion.div
+                key="graph"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="h-full"
+              >
+                <KnowledgeGraph />
               </motion.div>
             )}
 
@@ -909,8 +819,8 @@ function App() {
           whileTap={{ scale: 0.9 }}
         >
           <motion.button
-            onClick={() => setUploadModalOpen(true)}
-            className="relative w-16 h-16 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 text-white rounded-2xl shadow-premium transition-all duration-300 flex items-center justify-center"
+            onClick={() => { hapticTap(); setUploadModalOpen(true); }}
+            className="haptic relative w-16 h-16 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 text-white rounded-2xl shadow-premium transition-all duration-300 flex items-center justify-center"
           >
             <Plus size={24} />
           </motion.button>
@@ -947,14 +857,14 @@ function App() {
           <motion.button
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
-            onClick={() => setUploadModalOpen(true)}
-            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-500 text-white border-4 border-white/40"
+            onClick={() => { hapticTap(); setUploadModalOpen(true); }}
+            className="haptic w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-500 text-white border-4 border-white/40"
           >
             <Plus size={26} strokeWidth={3} />
           </motion.button>
 
           {([
-            { id: 'insights', icon: Brain, label: 'Insights' },
+            { id: 'graph', icon: Network, label: 'Graph' },
             { id: 'profile', icon: User, label: 'Profile' },
           ] as const).map((nav) => (
             <motion.button
@@ -995,6 +905,8 @@ function App() {
       )}
 
       <SettingsModal />
+
+      <CommandPalette />
 
       {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 
