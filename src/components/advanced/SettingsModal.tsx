@@ -1,46 +1,51 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import {
-  User,
-  Bell,
-  Shield,
-  Brain,
-  Monitor,
-  Download,
-  Upload,
-  Trash2,
-  Moon,
-  Sun,
-  Laptop,
-  Lock,
-  AlertTriangle,
-} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Download, Upload, Trash2, Lock } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import Modal from '../ui/Modal';
-import Button from '../ui/Button';
-import SecurityBadge from '../SecurityBadge';
+import { hapticTap } from '../../utils/haptics';
 import toast from 'react-hot-toast';
 
-const settingsSections = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'notifications', label: 'Reminders', icon: Bell },
-  { id: 'ai', label: 'Smart Features', icon: Brain },
-  { id: 'display', label: 'Display', icon: Monitor },
+const sections = [
+  { id: 'profile', label: 'Profile' },
+  { id: 'security', label: 'Security' },
+  { id: 'notifications', label: 'Reminders' },
+  { id: 'ai', label: 'Smart Features' },
+  { id: 'display', label: 'Display' },
+  { id: 'data', label: 'Data & Storage' },
 ];
 
-function Toggle({ value, onChange }: { value: boolean; onChange: () => void }) {
+// A printed-form checkbox: ink square, fills vermilion when checked.
+function InkCheck({ value, onChange }: { value: boolean; onChange: () => void }) {
   return (
     <button
-      onClick={onChange}
-      className={`w-12 h-6 rounded-full transition-all duration-200 flex-shrink-0 ${
-        value ? 'bg-emerald-500' : 'bg-gray-600'
+      onClick={() => { hapticTap(); onChange(); }}
+      role="switch"
+      aria-checked={value}
+      className={`haptic w-5 h-5 border-[1.5px] rounded-sm flex-shrink-0 flex items-center justify-center transition-all active:scale-90 ${
+        value
+          ? 'bg-[var(--accent)] border-[var(--accent)]'
+          : 'bg-transparent border-[var(--ink)] hover:border-[var(--accent)]'
       }`}
     >
-      <div className={`w-5 h-5 bg-white rounded-full transition-transform duration-200 ${
-        value ? 'translate-x-6' : 'translate-x-0.5'
-      }`} />
+      {value && (
+        <svg viewBox="0 0 12 12" className="w-3 h-3" fill="none">
+          <path d="M2 6.5L4.8 9L10 3" stroke="#fffdf7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
     </button>
+  );
+}
+
+// A settings line item: text left, control right, dotted rule between rows.
+function Row({ title, detail, children }: { title: string; detail: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-6 py-4 border-b border-dotted border-[var(--ink-line)] last:border-b-0">
+      <div className="min-w-0">
+        <p className="text-ink text-sm font-medium">{title}</p>
+        <p className="text-ink-faint text-xs mt-0.5 leading-relaxed">{detail}</p>
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -73,15 +78,19 @@ export default function SettingsModal() {
     }
   }, [isSettingsModalOpen, settingsSection]);
 
-  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
-    updateSettings({ theme });
-    toast.success(`Theme changed to ${theme}`);
-  };
-
-  const handleExport = () => {
-    exportContent();
-    toast.success('Backup downloaded');
-  };
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSettingsModalOpen(false);
+    };
+    if (isSettingsModalOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isSettingsModalOpen, setSettingsModalOpen]);
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -113,286 +122,238 @@ export default function SettingsModal() {
     toast.success('All content deleted');
   };
 
-  const renderProfileSection = () => (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-full flex items-center justify-center">
-          <span className="text-white font-bold text-xl">{user?.name?.[0]?.toUpperCase() || 'U'}</span>
-        </div>
-        <div>
-          <h3 className="text-xl font-semibold text-white">{user?.name || 'User'}</h3>
-          {user?.email && <p className="text-gray-400">{user.email}</p>}
-          <span className="inline-block px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full mt-1">
-            Local profile — data stays on this device
-          </span>
-        </div>
-      </div>
+  const renderProfile = () => (
+    <div>
+      <p className="font-label text-[9px] text-ink-faint mb-1">this notebook belongs to</p>
+      <h3 className="font-display text-3xl text-ink mb-1">
+        <span className="marker">{user?.name || 'You'}</span>
+      </h3>
+      {user?.email && <p className="font-mono text-xs text-ink-soft">{user.email}</p>}
+      <p className="font-label text-[9px] text-accent mt-3">local profile — data stays on this device</p>
 
-      <div className="grid grid-cols-3 gap-4 p-4 bg-gray-800/30 rounded-xl">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white">{content.length}</div>
-          <div className="text-sm text-gray-400">Total Items</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white">{content.filter(c => c.isFavorite).length}</div>
-          <div className="text-sm text-gray-400">Favorites</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-white">
-            {content.length > 0
+      <div className="grid grid-cols-3 border-y-2 border-[var(--ink)] divide-x divide-[var(--ink-line)] mt-8">
+        {[
+          { label: 'entries', value: content.length },
+          { label: 'starred', value: content.filter(c => c.isFavorite).length },
+          {
+            label: 'avg tags',
+            value: content.length > 0
               ? Math.round(content.reduce((acc, c) => acc + c.tags.length, 0) / content.length)
-              : 0}
-          </div>
-          <div className="text-sm text-gray-400">Avg Tags</div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderSecuritySection = () => (
-    <div className="space-y-6">
-      {/* Security Overview */}
-      <div className="bg-gray-800/30 rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-white">Security Overview</h3>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-400">Score:</span>
-            <span className={`font-bold ${securityScore >= 80 ? 'text-emerald-400' : securityScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
-              {securityScore}%
-            </span>
-          </div>
-        </div>
-
-        <div className="w-full bg-gray-700 rounded-full h-3 mb-4">
-          <div
-            className={`h-3 rounded-full transition-all duration-1000 ${
-              securityScore >= 80 ? 'bg-gradient-to-r from-emerald-500 to-green-500' :
-              securityScore >= 60 ? 'bg-gradient-to-r from-yellow-500 to-orange-500' :
-              'bg-gradient-to-r from-red-500 to-red-600'
-            }`}
-            style={{ width: `${securityScore}%` }}
-          />
-        </div>
-
-        <SecurityBadge variant="detailed" showDetails={true} />
-      </div>
-
-      {/* Encryption */}
-      <div className="space-y-4">
-        <h4 className="text-white font-medium">Encryption & Privacy</h4>
-
-        <div className="bg-gray-800/30 rounded-xl p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-                <Lock size={18} className="text-emerald-400" />
-              </div>
-              <div>
-                <h5 className="text-white font-medium">Encryption at Rest</h5>
-                <p className="text-gray-400 text-sm">
-                  {settings.security.encryptionEnabled
-                    ? 'Your content is encrypted with AES-256-GCM before it touches storage'
-                    : 'Encrypt your content with a passphrase only you know'}
-                </p>
-              </div>
-            </div>
-            {settings.security.encryptionEnabled ? (
-              <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                <Shield size={16} />
-                <span>Active</span>
-              </div>
-            ) : (
-              <Button
-                onClick={() => {
-                  setSettingsModalOpen(false);
-                  setEncryptionModalOpen(true);
-                }}
-                size="sm"
-                variant="primary"
-              >
-                Enable
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {settings.security.encryptionEnabled && isEncryptionSetup && (
-          <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-            <div>
-              <h5 className="text-white font-medium">Lock Now</h5>
-              <p className="text-gray-400 text-sm">Clear the key from memory — you'll need your passphrase to continue</p>
-            </div>
-            <Button onClick={() => { lock(); setSettingsModalOpen(false); }} size="sm" variant="secondary">
-              <Lock size={14} />
-              Lock
-            </Button>
-          </div>
-        )}
-
-        <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-          <div>
-            <h5 className="text-white font-medium">Auto-Lock</h5>
-            <p className="text-gray-400 text-sm">
-              {settings.security.encryptionEnabled
-                ? 'Automatically lock the workspace after inactivity'
-                : 'Requires encryption to be enabled'}
-            </p>
-          </div>
-          <Toggle
-            value={settings.security.autoLock}
-            onChange={() => updateSettings({
-              security: { ...settings.security, autoLock: !settings.security.autoLock },
-            })}
-          />
-        </div>
-
-        {settings.security.autoLock && (
-          <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-            <div>
-              <h5 className="text-white font-medium">Auto-Lock Timeout</h5>
-              <p className="text-gray-400 text-sm">Lock after {settings.security.autoLockTimeout} minutes of inactivity</p>
-            </div>
-            <select
-              value={settings.security.autoLockTimeout}
-              onChange={(e) => updateSettings({
-                security: { ...settings.security, autoLockTimeout: parseInt(e.target.value) },
-              })}
-              className="px-3 py-1 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm"
-            >
-              <option value={5}>5 min</option>
-              <option value={15}>15 min</option>
-              <option value={30}>30 min</option>
-              <option value={60}>1 hour</option>
-            </select>
-          </div>
-        )}
-      </div>
-
-      {/* Recommendations */}
-      {!settings.security.encryptionEnabled && (
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="text-yellow-400 mt-0.5" size={18} />
-            <div>
-              <h4 className="text-yellow-400 font-medium mb-2">Recommendation</h4>
-              <p className="text-gray-400 text-sm">
-                Enable encryption at rest so your content is unreadable even if someone
-                gains access to this device's browser storage.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderNotificationsSection = () => (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-        <div>
-          <h4 className="text-white font-medium">Smart Reminders</h4>
-          <p className="text-gray-400 text-sm">
-            Detect deadlines and follow-ups in your notes and surface them in the reminders panel
-          </p>
-        </div>
-        <Toggle
-          value={settings.notifications.reminders}
-          onChange={() => updateSettings({
-            notifications: { ...settings.notifications, reminders: !settings.notifications.reminders },
-          })}
-        />
-      </div>
-      <p className="text-gray-500 text-sm px-1">
-        supermind is fully local — there are no emails or push notifications, so there's
-        nothing else to configure here.
-      </p>
-    </div>
-  );
-
-  const renderAiSection = () => (
-    <div className="space-y-4">
-      {([
-        { key: 'autoTagging' as const, label: 'Auto-Tagging', desc: 'Generate tags from content as you save it' },
-        { key: 'smartSummaries' as const, label: 'Smart Summaries', desc: 'Extract a short summary from each item' },
-        { key: 'contentSuggestions' as const, label: 'Suggestions', desc: 'Show related items and review suggestions in Insights' },
-      ]).map(({ key, label, desc }) => (
-        <div key={key} className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-          <div>
-            <h4 className="text-white font-medium">{label}</h4>
-            <p className="text-gray-400 text-sm">{desc}</p>
-          </div>
-          <Toggle
-            value={settings.ai[key]}
-            onChange={() => updateSettings({ ai: { ...settings.ai, [key]: !settings.ai[key] } })}
-          />
-        </div>
-      ))}
-      <p className="text-gray-500 text-sm px-1">
-        All processing runs on your device. Nothing is sent to any server.
-      </p>
-    </div>
-  );
-
-  const renderDisplaySection = () => (
-    <div className="space-y-6">
-      <div>
-        <h4 className="text-white font-medium mb-3">Theme</h4>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { value: 'light', icon: Sun, label: 'Light' },
-            { value: 'dark', icon: Moon, label: 'Dark' },
-            { value: 'system', icon: Laptop, label: 'System' },
-          ].map(({ value, icon: Icon, label }) => (
-            <button
-              key={value}
-              onClick={() => handleThemeChange(value as 'light' | 'dark' | 'system')}
-              className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-all duration-200 ${
-                settings.theme === value
-                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400'
-                  : 'bg-gray-800/30 border-gray-700/50 text-gray-400 hover:text-white'
-              }`}
-            >
-              <Icon size={20} />
-              <span className="text-sm">{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {([
-          { key: 'showPreviews' as const, label: 'Show Previews', desc: 'Display image and media previews on cards' },
-          { key: 'animationsEnabled' as const, label: 'Animations', desc: 'Enable smooth transitions and motion' },
-        ]).map(({ key, label, desc }) => (
-          <div key={key} className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl">
-            <div>
-              <h4 className="text-white font-medium">{label}</h4>
-              <p className="text-gray-400 text-sm">{desc}</p>
-            </div>
-            <Toggle
-              value={settings.display[key]}
-              onChange={() => updateSettings({ display: { ...settings.display, [key]: !settings.display[key] } })}
-            />
+              : 0,
+          },
+        ].map((stat) => (
+          <div key={stat.label} className="py-4 px-4 first:pl-0">
+            <p className="font-display text-3xl text-ink tabular-nums leading-none">{stat.value}</p>
+            <p className="font-label text-[8px] text-ink-faint mt-1.5">{stat.label}</p>
           </div>
         ))}
       </div>
     </div>
   );
 
-  const renderDataSection = () => (
-    <div className="space-y-4">
-      <div className="p-4 bg-gray-800/30 rounded-xl">
-        <h4 className="text-white font-medium mb-2">Export Data</h4>
-        <p className="text-gray-400 text-sm mb-4">Download all {content.length} items as a JSON backup</p>
-        <Button onClick={handleExport} variant="secondary" size="sm">
-          <Download size={16} />
-          Export Content
-        </Button>
+  const renderSecurity = () => (
+    <div>
+      {/* The seal — score as a printed figure */}
+      <div className="flex items-end justify-between mb-2">
+        <div>
+          <p className="font-label text-[9px] text-ink-faint mb-1">security score</p>
+          <p className="font-display text-5xl text-ink leading-none tabular-nums">
+            {securityScore}
+            <span className="text-xl text-ink-faint">/100</span>
+          </p>
+        </div>
+        <span className={`stamp ${securityScore >= 80 ? '!border-[var(--accent)] !text-[var(--accent)]' : ''}`}>
+          {settings.security.encryptionEnabled ? 'Sealed' : 'Open'}
+        </span>
+      </div>
+      <div className="h-[3px] bg-[var(--ink-line)] mb-1">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${securityScore}%` }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="h-full bg-[var(--accent)]"
+        />
+      </div>
+      <p className="font-label text-[8px] text-ink-faint mb-6">
+        aes-256-gcm at rest · key from your passphrase (pbkdf2, 250k) · no servers, ever
+      </p>
+
+      <Row
+        title="Encryption at rest"
+        detail={settings.security.encryptionEnabled
+          ? 'Your content is encrypted with AES-256-GCM before it touches storage.'
+          : 'Encrypt your content with a passphrase only you know.'}
+      >
+        {settings.security.encryptionEnabled ? (
+          <span className="font-label text-[9px] text-accent flex-shrink-0">active</span>
+        ) : (
+          <button
+            onClick={() => {
+              setSettingsModalOpen(false);
+              setEncryptionModalOpen(true);
+            }}
+            className="btn-ink haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex-shrink-0"
+          >
+            Enable
+          </button>
+        )}
+      </Row>
+
+      {settings.security.encryptionEnabled && isEncryptionSetup && (
+        <Row title="Lock now" detail="Clear the key from memory — you'll need your passphrase to continue.">
+          <button
+            onClick={() => { lock(); setSettingsModalOpen(false); }}
+            className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
+          >
+            <Lock size={12} /> Lock
+          </button>
+        </Row>
+      )}
+
+      <Row
+        title="Auto-lock"
+        detail={settings.security.encryptionEnabled
+          ? 'Automatically lock the workspace after inactivity.'
+          : 'Requires encryption to be enabled.'}
+      >
+        <InkCheck
+          value={settings.security.autoLock}
+          onChange={() => updateSettings({
+            security: { ...settings.security, autoLock: !settings.security.autoLock },
+          })}
+        />
+      </Row>
+
+      {settings.security.autoLock && (
+        <Row title="Auto-lock after" detail={`Locks after ${settings.security.autoLockTimeout} minutes of inactivity.`}>
+          <select
+            value={settings.security.autoLockTimeout}
+            onChange={(e) => updateSettings({
+              security: { ...settings.security, autoLockTimeout: parseInt(e.target.value) },
+            })}
+            className="font-mono text-xs bg-transparent text-ink border-[1.5px] border-[var(--ink)] rounded-sm px-2 py-1 flex-shrink-0"
+          >
+            <option value={5}>5 min</option>
+            <option value={15}>15 min</option>
+            <option value={30}>30 min</option>
+            <option value={60}>1 hour</option>
+          </select>
+        </Row>
+      )}
+
+      {!settings.security.encryptionEnabled && (
+        <div className="mt-6 border-l-2 border-[var(--accent)] pl-4">
+          <p className="font-label text-[9px] text-accent mb-1">recommendation</p>
+          <p className="text-ink-soft text-xs leading-relaxed">
+            Enable encryption at rest so your content is unreadable even if someone gains
+            access to this device's browser storage.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderNotifications = () => (
+    <div>
+      <Row
+        title="Smart reminders"
+        detail="Detect deadlines and follow-ups in your notes and surface them in the reminders panel."
+      >
+        <InkCheck
+          value={settings.notifications.reminders}
+          onChange={() => updateSettings({
+            notifications: { ...settings.notifications, reminders: !settings.notifications.reminders },
+          })}
+        />
+      </Row>
+      <p className="font-label text-[9px] text-ink-faint mt-5 leading-relaxed">
+        supermind is fully local — there are no emails or push notifications, so there's
+        nothing else to configure here.
+      </p>
+    </div>
+  );
+
+  const renderAi = () => (
+    <div>
+      {([
+        { key: 'autoTagging' as const, label: 'Auto-tagging', desc: 'Generate tags from content as you save it.' },
+        { key: 'smartSummaries' as const, label: 'Smart summaries', desc: 'Extract a short summary from each longer item.' },
+        { key: 'contentSuggestions' as const, label: 'Suggestions', desc: 'Show related items and review suggestions in the Almanac.' },
+      ]).map(({ key, label, desc }) => (
+        <Row key={key} title={label} detail={desc}>
+          <InkCheck
+            value={settings.ai[key]}
+            onChange={() => updateSettings({ ai: { ...settings.ai, [key]: !settings.ai[key] } })}
+          />
+        </Row>
+      ))}
+      <p className="font-label text-[9px] text-ink-faint mt-5">
+        all processing runs on your device. nothing is sent to any server.
+      </p>
+    </div>
+  );
+
+  const renderDisplay = () => (
+    <div>
+      <p className="font-label text-[9px] text-ink-soft mb-3">paper stock</p>
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        {[
+          { value: 'light', label: 'Daylight', swatch: '#faf6ec' },
+          { value: 'dark', label: 'Midnight', swatch: '#14120d' },
+          { value: 'system', label: 'System', swatch: 'linear-gradient(135deg, #faf6ec 50%, #14120d 50%)' },
+        ].map(({ value, label, swatch }) => {
+          const active = settings.theme === value;
+          return (
+            <button
+              key={value}
+              onClick={() => {
+                hapticTap();
+                updateSettings({ theme: value as 'light' | 'dark' | 'system' });
+              }}
+              className={`haptic rounded-sm border-[1.5px] p-3 flex flex-col items-center gap-2 transition-all active:translate-y-[1px] ${
+                active
+                  ? 'border-[var(--accent)] shadow-[3px_3px_0_var(--accent)]'
+                  : 'border-[var(--ink-line)] hover:border-[var(--ink)]'
+              }`}
+            >
+              <span
+                className="w-full h-10 rounded-sm border border-[var(--ink-line)]"
+                style={{ background: swatch }}
+              />
+              <span className={`font-label text-[9px] ${active ? 'text-accent' : 'text-ink-soft'}`}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="p-4 bg-gray-800/30 rounded-xl">
-        <h4 className="text-white font-medium mb-2">Import Data</h4>
-        <p className="text-gray-400 text-sm mb-4">Restore a previously exported supermind backup</p>
+      {([
+        { key: 'showPreviews' as const, label: 'Show previews', desc: 'Display image and media previews in the book.' },
+        { key: 'animationsEnabled' as const, label: 'Animations', desc: 'Enable smooth transitions and motion.' },
+      ]).map(({ key, label, desc }) => (
+        <Row key={key} title={label} detail={desc}>
+          <InkCheck
+            value={settings.display[key]}
+            onChange={() => updateSettings({ display: { ...settings.display, [key]: !settings.display[key] } })}
+          />
+        </Row>
+      ))}
+    </div>
+  );
+
+  const renderData = () => (
+    <div>
+      <Row title="Export everything" detail={`Download all ${content.length} items as a JSON backup.`}>
+        <button
+          onClick={() => { exportContent(); toast.success('Backup downloaded'); }}
+          className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
+        >
+          <Download size={12} /> Export
+        </button>
+      </Row>
+
+      <Row title="Import a backup" detail="Restore a previously exported supermind JSON file. Duplicates are skipped.">
         <input
           ref={importInputRef}
           type="file"
@@ -400,86 +361,119 @@ export default function SettingsModal() {
           onChange={handleImport}
           className="hidden"
         />
-        <Button onClick={() => importInputRef.current?.click()} variant="secondary" size="sm">
-          <Upload size={16} />
-          Import Content
-        </Button>
-      </div>
+        <button
+          onClick={() => importInputRef.current?.click()}
+          className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
+        >
+          <Upload size={12} /> Import
+        </button>
+      </Row>
 
-      <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-        <h4 className="text-red-400 font-medium mb-2">Danger Zone</h4>
-        <p className="text-gray-400 text-sm mb-4">Permanently delete all your saved content</p>
-        <Button onClick={handleDeleteAll} variant="destructive" size="sm">
-          <Trash2 size={16} />
-          Delete All Data
-        </Button>
+      <div className="mt-8 border-[1.5px] border-red-600/60 rounded-sm p-4 relative">
+        <span className="stamp !border-red-600 !text-red-600 absolute -top-3 left-4 bg-[var(--paper-raised)]">
+          Danger
+        </span>
+        <div className="flex items-center justify-between gap-6 pt-1">
+          <p className="text-ink-faint text-xs leading-relaxed">
+            Permanently delete all your saved content. There is no undo.
+          </p>
+          <button
+            onClick={handleDeleteAll}
+            className="haptic px-4 py-1.5 rounded-sm text-xs font-semibold border-[1.5px] border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 active:translate-y-[1px]"
+          >
+            <Trash2 size={12} /> Delete all
+          </button>
+        </div>
       </div>
     </div>
   );
 
   const renderSection = () => {
     switch (activeSection) {
-      case 'profile': return renderProfileSection();
-      case 'security': return renderSecuritySection();
-      case 'notifications': return renderNotificationsSection();
-      case 'ai': return renderAiSection();
-      case 'display': return renderDisplaySection();
-      default: return renderDataSection();
+      case 'profile': return renderProfile();
+      case 'security': return renderSecurity();
+      case 'notifications': return renderNotifications();
+      case 'ai': return renderAi();
+      case 'display': return renderDisplay();
+      default: return renderData();
     }
   };
 
   return (
-    <Modal
-      isOpen={isSettingsModalOpen}
-      onClose={() => setSettingsModalOpen(false)}
-      title="Settings"
-      size="xl"
-    >
-      <div className="flex flex-col md:flex-row gap-6">
-        {/* Sidebar */}
-        <div className="md:w-64 space-y-2">
-          {settingsSections.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveSection(id)}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-                activeSection === id
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
-            >
-              <Icon size={18} />
-              <span className="font-medium">{label}</span>
-            </button>
-          ))}
-
-          <div className="pt-4 border-t border-gray-700/50">
-            <button
-              onClick={() => setActiveSection('data')}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
-                activeSection === 'data'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
-            >
-              <Download size={18} />
-              <span className="font-medium">Data & Storage</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1">
+    <AnimatePresence>
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
-            key={activeSection}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            onClick={() => setSettingsModalOpen(false)}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: 12 }}
+            className="card-ink-static relative w-full max-w-3xl max-h-[88vh] rounded-sm flex flex-col overflow-hidden"
           >
-            {renderSection()}
+            {/* Header */}
+            <div className="flex items-center justify-between px-7 pt-5 pb-4 border-b border-[var(--ink-line)] flex-shrink-0">
+              <div>
+                <p className="font-label text-[9px] text-ink-faint">the fine print</p>
+                <h2 className="font-display text-2xl text-ink leading-tight">
+                  Adjustments<span className="text-accent">.</span>
+                </h2>
+              </div>
+              <button
+                onClick={() => setSettingsModalOpen(false)}
+                className="text-ink-faint hover:text-ink transition-colors"
+                aria-label="Close settings"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col md:flex-row min-h-0 flex-1">
+              {/* Index */}
+              <div className="md:w-48 flex-shrink-0 border-b md:border-b-0 md:border-r border-[var(--ink-line)] px-4 py-4 flex md:flex-col gap-1 overflow-x-auto">
+                {sections.map(({ id, label }) => {
+                  const active = activeSection === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => { hapticTap(); setActiveSection(id); }}
+                      className={`haptic relative text-left px-3 py-2 rounded-sm font-label text-[10px] whitespace-nowrap transition-colors ${
+                        active ? 'text-accent bg-[var(--accent-soft)]' : 'text-ink-soft hover:text-ink'
+                      }`}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="settings-rule"
+                          className="absolute left-0 top-1 bottom-1 w-[3px] bg-[var(--accent)] rounded-full hidden md:block"
+                        />
+                      )}
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Page */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-7 py-6">
+                <motion.div
+                  key={activeSection}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18 }}
+                >
+                  {renderSection()}
+                </motion.div>
+              </div>
+            </div>
           </motion.div>
         </div>
-      </div>
-    </Modal>
+      )}
+    </AnimatePresence>
   );
 }
