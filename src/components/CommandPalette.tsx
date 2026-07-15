@@ -16,6 +16,7 @@ import {
   Tag,
   CornerDownLeft,
   Grid,
+  Command,
   type LucideIcon,
 } from 'lucide-react';
 import Fuse from 'fuse.js';
@@ -51,6 +52,7 @@ export default function CommandPalette() {
   const {
     isCommandPaletteOpen,
     setCommandPaletteOpen,
+    setLegendOpen,
     setActiveView,
     setUploadModalOpen,
     setSettingsModalOpen,
@@ -109,6 +111,11 @@ export default function CommandPalette() {
         run: () => setActiveView('profile'),
       },
       {
+        id: 'legend', label: 'Keyboard Shortcuts — the legend', icon: Command,
+        keywords: 'keyboard shortcuts legend help keys cheat sheet',
+        run: () => setLegendOpen(true),
+      },
+      {
         id: 'theme', label: settings.theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode',
         icon: settings.theme === 'dark' ? Sun : Moon,
         keywords: 'theme dark light mode appearance toggle switch',
@@ -155,7 +162,7 @@ export default function CommandPalette() {
     }
 
     return cmds;
-  }, [settings.theme, filter, user?.encryptionEnabled, isEncryptionSetup, setUploadModalOpen, setActiveView, updateSettings, setFilter, exportContent, setSettingsModalOpen, lock]);
+  }, [settings.theme, filter, user?.encryptionEnabled, isEncryptionSetup, setUploadModalOpen, setActiveView, updateSettings, setFilter, exportContent, setSettingsModalOpen, setLegendOpen, lock]);
 
   const commandFuse = React.useMemo(
     () => new Fuse(commands, { keys: ['label', 'keywords'], threshold: 0.4 }),

@@ -28,8 +28,23 @@ requestAnimationFrame(() => {
 // Offline support + PWA installability. Production only, so dev reloads stay instant.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
-      // Offline support is progressive enhancement — never block the app on it.
-    });
+    const firstInstall = !navigator.serviceWorker.controller;
+    navigator.serviceWorker
+      .register(`${import.meta.env.BASE_URL}sw.js`)
+      .then((reg) => {
+        if (!firstInstall) return;
+        // Tell the user once, the first time offline support becomes real.
+        const worker = reg.installing || reg.waiting;
+        worker?.addEventListener('statechange', () => {
+          if (worker.state === 'activated') {
+            import('react-hot-toast').then(({ default: toast }) =>
+              toast('Saved to this device — supermind now works offline.', { icon: '📓' })
+            );
+          }
+        });
+      })
+      .catch(() => {
+        // Offline support is progressive enhancement — never block the app on it.
+      });
   });
 }

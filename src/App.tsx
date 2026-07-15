@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
-  Shield, Grid, Clock,
+  Shield, Grid, Clock, Smartphone,
   Network, Download, ChevronRight, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -20,6 +20,7 @@ import AboutPage from './components/AboutPage';
 import Dashboard from './components/Dashboard';
 import KnowledgeGraph from './components/KnowledgeGraph';
 import CommandPalette from './components/CommandPalette';
+import Legend from './components/Legend';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
@@ -56,6 +57,35 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [quickActions, setQuickActions] = React.useState(false);
+
+  // PWA install: browsers hand us the prompt via beforeinstallprompt; we
+  // stash it and offer "Install App" in quick actions while it's valid.
+  const [installPrompt, setInstallPrompt] = React.useState<
+    (Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }) | null
+  >(null);
+  React.useEffect(() => {
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as typeof installPrompt);
+    };
+    const onInstalled = () => {
+      setInstallPrompt(null);
+      toast.success('supermind is on your shelf now');
+    };
+    window.addEventListener('beforeinstallprompt', onPrompt);
+    window.addEventListener('appinstalled', onInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
+  }, []);
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome !== 'accepted') return;
+    setInstallPrompt(null);
+  };
   const [showWelcome, setShowWelcome] = React.useState(true);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
@@ -417,6 +447,9 @@ function App() {
                           },
                           { icon: Settings, label: 'Settings', action: () => setSettingsModalOpen(true) },
                           { icon: BarChart3, label: 'Almanac', action: () => setActiveView('almanac') },
+                          ...(installPrompt
+                            ? [{ icon: Smartphone, label: 'Install App', action: handleInstall }]
+                            : []),
                         ].map((action) => (
                           <motion.button
                             key={action.label}
@@ -736,6 +769,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       <SettingsModal />
 
       <CommandPalette />
+      <Legend />
 
       {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 

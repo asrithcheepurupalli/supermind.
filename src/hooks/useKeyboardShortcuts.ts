@@ -2,7 +2,10 @@ import { useEffect } from 'react';
 import { useStore } from '../store/useStore';
 
 export const useKeyboardShortcuts = () => {
-  const { setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen, filter, setFilter } = useStore();
+  const {
+    setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen,
+    setLegendOpen, setActiveView, filter, setFilter,
+  } = useStore();
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -21,6 +24,25 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
+      // Single-key page turns (no modifier), vim-style.
+      if (!isModifierPressed && !shiftKey && !event.altKey) {
+        const viewKeys: Record<string, 'home' | 'timeline' | 'graph' | 'almanac'> = {
+          h: 'home', t: 'timeline', g: 'graph', a: 'almanac',
+        };
+        if (viewKeys[key]) {
+          event.preventDefault();
+          setActiveView(viewKeys[key]);
+          return;
+        }
+      }
+
+      // "?" opens the legend — the cheat sheet for all of this.
+      if (key === '?') {
+        event.preventDefault();
+        setLegendOpen(true);
+        return;
+      }
+
       switch (key) {
         case 'n':
           if (isModifierPressed) {
@@ -28,17 +50,18 @@ export const useKeyboardShortcuts = () => {
             setUploadModalOpen(true);
           }
           break;
-        
+
         case ',':
           if (isModifierPressed) {
             event.preventDefault();
             setSettingsModalOpen(true);
           }
           break;
-        
+
         case 'Escape':
           setUploadModalOpen(false);
           setSettingsModalOpen(false);
+          setLegendOpen(false);
           break;
         
         case '1':
@@ -75,5 +98,5 @@ export const useKeyboardShortcuts = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen, filter, setFilter]);
+  }, [setUploadModalOpen, setSettingsModalOpen, setCommandPaletteOpen, setLegendOpen, setActiveView, filter, setFilter]);
 };

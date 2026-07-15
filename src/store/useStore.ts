@@ -65,6 +65,7 @@ interface AppState {
   settingsSection: string;
   isEncryptionModalOpen: boolean;
   isCommandPaletteOpen: boolean;
+  isLegendOpen: boolean;
   selectedContent: SavedContent | null;
 
   // App Settings
@@ -86,6 +87,7 @@ interface AppState {
   setFilter: (filter: FilterState) => void;
   setActiveView: (view: AppState['activeView']) => void;
   setCommandPaletteOpen: (open: boolean) => void;
+  setLegendOpen: (open: boolean) => void;
   setUploadModalOpen: (open: boolean) => void;
   setSettingsModalOpen: (open: boolean, section?: string) => void;
   setEncryptionModalOpen: (open: boolean) => void;
@@ -182,6 +184,7 @@ export const useStore = create<AppState>()(
       settingsSection: 'profile',
       isEncryptionModalOpen: false,
       isCommandPaletteOpen: false,
+      isLegendOpen: false,
       selectedContent: null,
       settings: defaultSettings,
       isLoading: false,
@@ -324,6 +327,7 @@ export const useStore = create<AppState>()(
       setFilter: (filter) => set({ filter }),
       setActiveView: (view) => set({ activeView: view }),
       setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      setLegendOpen: (open) => set({ isLegendOpen: open }),
       setUploadModalOpen: (open) => set({ isUploadModalOpen: open }),
       setSettingsModalOpen: (open, section) =>
         set((state) => ({
