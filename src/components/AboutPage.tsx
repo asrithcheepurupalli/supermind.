@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import MadeBadge from './MadeBadge';
 
 interface AboutPageProps {
   onBack: () => void;
@@ -181,8 +182,11 @@ export default function AboutPage({ onBack }: AboutPageProps) {
 
       {/* Footer */}
       <footer className="border-t-[1.5px] border-ink">
-        <div className="max-w-4xl mx-auto px-6 py-8 text-center font-label text-[9px] text-ink-faint">
-          © {new Date().getFullYear()} supermind · runs entirely on your device
+        <div className="max-w-4xl mx-auto px-6 py-8 flex flex-col items-center gap-3">
+          <MadeBadge />
+          <p className="font-label text-[9px] text-ink-faint">
+            © {new Date().getFullYear()} supermind · runs entirely on your device
+          </p>
         </div>
       </footer>
     </div>

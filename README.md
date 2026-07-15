@@ -69,3 +69,5 @@ Fork, branch, make the checks pass (`npm run typecheck && npm run lint && npm ru
 ## License
 
 MIT
+
+A [made.](https://made-by-ac.com) product.

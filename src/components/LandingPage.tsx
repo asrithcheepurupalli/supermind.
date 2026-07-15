@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import MadeBadge from './MadeBadge';
 import {
   ArrowRight,
   ArrowDown,
@@ -335,6 +336,15 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
                 no account<br />no server<br />no catch
               </div>
             </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-12"
+            >
+              <MadeBadge />
+            </motion.div>
           </div>
 
           {/* Card collage */}
@@ -540,9 +550,12 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
       {/* Colophon footer */}
       <footer className="border-t-[1.5px] border-ink">
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-baseline gap-1">
-            <span className="font-display text-xl">supermind</span>
-            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+          <div className="flex flex-col items-center md:items-start gap-3">
+            <div className="flex items-baseline gap-1">
+              <span className="font-display text-xl">supermind</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+            </div>
+            <MadeBadge />
           </div>
           <div className="font-label text-[10px] text-ink-faint text-center md:text-right leading-relaxed">
             set in instrument serif & jetbrains mono · runs entirely on your device
