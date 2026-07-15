@@ -1,552 +1,444 @@
 import React from 'react';
-import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import {
-  Brain,
-  Sparkles,
-  Shield,
   ArrowRight,
-  Search,
-  HardDrive,
+  ArrowDown,
   Command,
-  History,
-  Network,
-  Zap,
   Lock,
-  Plus,
-  Clock,
-  Star,
-  CornerDownLeft,
+  Search,
+  PenLine,
+  Link as LinkIcon,
+  Network,
+  History,
+  HardDrive,
 } from 'lucide-react';
-import Particles from './Particles';
-import HeroGraph from './landing/HeroGraph';
 
 interface LandingPageProps {
   onGetStarted: () => void;
   onAbout: () => void;
 }
 
-/* ---------- micro-components ---------- */
+/* ---------- pieces ---------- */
 
-const ROTATING_WORDS = ['that article', 'that idea', 'that recipe', 'that quote', 'anything'];
-
-function RotatingWord() {
-  const [index, setIndex] = React.useState(0);
-  React.useEffect(() => {
-    const t = setInterval(() => setIndex(i => (i + 1) % ROTATING_WORDS.length), 2200);
-    return () => clearInterval(t);
-  }, []);
-  return (
-    <span className="relative inline-grid overflow-visible align-baseline justify-items-center">
-      <AnimatePresence mode="popLayout">
-        <motion.span
-          key={ROTATING_WORDS[index]}
-          layout
-          initial={{ y: '60%', opacity: 0, filter: 'blur(6px)' }}
-          animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
-          exit={{ y: '-60%', opacity: 0, filter: 'blur(6px)' }}
-          transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          className="col-start-1 row-start-1 whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-emerald-300 via-emerald-400 to-blue-400 text-shine"
-        >
-          {ROTATING_WORDS[index]}
-        </motion.span>
-      </AnimatePresence>
-    </span>
-  );
-}
-
-// CTA that leans toward the cursor.
-function Magnetic({ children }: { children: React.ReactNode }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
+// Strip of washi tape holding a card down.
+function Tape({ className = '' }: { className?: string }) {
   return (
     <div
-      ref={ref}
-      onMouseMove={(e) => {
-        const rect = ref.current!.getBoundingClientRect();
-        setOffset({
-          x: (e.clientX - rect.left - rect.width / 2) * 0.18,
-          y: (e.clientY - rect.top - rect.height / 2) * 0.3,
-        });
-      }}
-      onMouseLeave={() => setOffset({ x: 0, y: 0 })}
+      aria-hidden
+      className={`absolute w-20 h-6 bg-[var(--accent-soft)] border border-[var(--ink-line)] backdrop-blur-[1px] ${className}`}
+      style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+    />
+  );
+}
+
+// A pinned index card for the hero collage.
+function IndexCard({
+  rotate,
+  className,
+  children,
+  delay = 0,
+}: {
+  rotate: number;
+  className?: string;
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40, rotate: rotate * 2 }}
+      animate={{ opacity: 1, y: 0, rotate }}
+      whileHover={{ rotate: 0, scale: 1.04, zIndex: 30 }}
+      transition={{ delay, type: 'spring', stiffness: 120, damping: 15 }}
+      className={`card-ink rounded-sm p-5 absolute cursor-default ${className}`}
     >
-      <motion.div animate={offset} transition={{ type: 'spring', stiffness: 200, damping: 18 }}>
-        {children}
-      </motion.div>
-    </div>
+      {children}
+    </motion.div>
   );
 }
 
-// Product frame that tilts in 3D toward the cursor.
-function TiltFrame({ children }: { children: React.ReactNode }) {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [tilt, setTilt] = React.useState({ rx: 0, ry: 0 });
-  return (
-    <div
-      ref={ref}
-      style={{ perspective: 1200 }}
-      onMouseMove={(e) => {
-        const rect = ref.current!.getBoundingClientRect();
-        const px = (e.clientX - rect.left) / rect.width - 0.5;
-        const py = (e.clientY - rect.top) / rect.height - 0.5;
-        setTilt({ rx: -py * 7, ry: px * 9 });
-      }}
-      onMouseLeave={() => setTilt({ rx: 0, ry: 0 })}
-    >
-      <motion.div
-        animate={{ rotateX: tilt.rx, rotateY: tilt.ry }}
-        transition={{ type: 'spring', stiffness: 150, damping: 20 }}
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        {children}
-      </motion.div>
-    </div>
-  );
-}
-
-/* ---------- bento cells ---------- */
-
-function PaletteMock() {
-  const rows = [
-    { icon: Plus, label: 'Add Content', kbd: '⌘N' },
-    { icon: Network, label: 'Go to Knowledge Graph' },
-    { icon: Star, label: 'Show Favorites Only' },
-    { icon: Lock, label: 'Lock Workspace' },
-  ];
-  return (
-    <div className="rounded-2xl bg-black/50 border border-white/10 overflow-hidden text-left shadow-2xl">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/10">
-        <Search size={14} className="text-gray-500" />
-        <span className="text-gray-400 text-sm">lock</span>
-        <span className="w-px h-4 bg-emerald-400 animate-pulse" />
-      </div>
-      {rows.map((row, i) => (
-        <div
-          key={row.label}
-          className={`flex items-center gap-3 px-4 py-2.5 text-sm ${i === 3 ? 'bg-emerald-500/15' : ''}`}
-        >
-          <div className="w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-            <row.icon size={12} />
-          </div>
-          <span className="text-gray-200 flex-1">{row.label}</span>
-          {row.kbd && <span className="text-[10px] text-gray-500">{row.kbd}</span>}
-          {i === 3 && <CornerDownLeft size={12} className="text-gray-500" />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function MemoryLaneMock() {
-  const cards = [
-    { label: 'ONE MONTH AGO', text: 'That pasta recipe from nonna\'s cookbook' },
-    { label: 'ONE WEEK AGO', text: 'Sketches for the studio rebrand' },
-    { label: 'YESTERDAY', text: 'Why spaced repetition actually works' },
-  ];
-  return (
-    <div className="relative h-44">
-      {cards.map((card, i) => (
-        <motion.div
-          key={card.label}
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.2 + i * 0.15 }}
-          className="absolute inset-x-0 rounded-xl bg-black/60 border border-white/10 p-3 shadow-xl"
-          style={{ top: i * 44, zIndex: i, scale: 0.94 + i * 0.03 }}
-        >
-          <div className="text-purple-400 text-[10px] font-bold tracking-widest mb-1">{card.label}</div>
-          <div className="text-gray-200 text-sm truncate">{card.text}</div>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
+const MARQUEE_WORDS = ['capture', 'tag', 'connect', 'recall', 'encrypt', 'rediscover'];
 
 /* ---------- page ---------- */
 
 export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps) {
   const { scrollY } = useScroll();
-  const heroY = useTransform(scrollY, [0, 600], [0, -120]);
-  const heroOpacity = useTransform(scrollY, [0, 420], [1, 0]);
+  const collageY = useTransform(scrollY, [0, 700], [0, -60]);
 
-  const bento = [
+  const chapters = [
     {
-      span: 'lg:col-span-2 lg:row-span-2',
-      title: 'A living map of your mind',
-      desc: 'Your tags become a breathing, force-directed graph. Hover to see connections light up; click any node to dive into that corner of your knowledge.',
+      num: '01',
+      title: 'Capture without friction',
+      body: 'Notes, links, images, files. One keystroke to save, zero forms to fill. Your thought lands on paper before it evaporates.',
+      icon: PenLine,
+      demo: (
+        <div className="card-ink-static rounded-sm p-5 rotate-[-1deg]">
+          <div className="font-label text-[10px] text-ink-faint mb-3">quick capture</div>
+          <p className="font-display text-2xl text-ink leading-snug mb-4">
+            "The best interface is the one you forget is there."
+          </p>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-2">
+              {['#design', '#quotes'].map(t => (
+                <span key={t} className="font-label text-[10px] text-accent">{t}</span>
+              ))}
+            </div>
+            <span className="font-label text-[10px] text-ink-faint">auto-filed · 0.2s</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      num: '02',
+      title: 'It files itself',
+      body: 'Tags, summaries, categories, reminders — extracted on your device the instant you save. The librarian lives inside the notebook.',
+      icon: Search,
+      demo: (
+        <div className="card-ink-static rounded-sm p-5 rotate-[1deg]">
+          <div className="font-label text-[10px] text-ink-faint mb-3">on-device organizer</div>
+          {[
+            ['reads your note', 'done'],
+            ['writes 4 tags', 'done'],
+            ['files under health', 'done'],
+            ['sets friday reminder', 'done'],
+          ].map(([label, state]) => (
+            <div key={label} className="flex items-center justify-between py-1.5 border-b border-[var(--ink-line)] last:border-0">
+              <span className="text-ink text-sm">{label}</span>
+              <span className="font-label text-[9px] text-accent">{state}</span>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      num: '03',
+      title: 'Watch ideas find each other',
+      body: 'A living graph of your tags, drawn from what you actually save. Hover a node and its connections light up. Click and dive in.',
       icon: Network,
-      body: (
-        <div className="relative h-[300px] lg:h-[440px] rounded-2xl bg-black/40 border border-white/10 overflow-hidden">
-          <HeroGraph className="absolute inset-0" />
+      demo: (
+        <div className="card-ink-static rounded-sm p-5 rotate-[-1deg] relative overflow-hidden">
+          <div className="font-label text-[10px] text-ink-faint mb-3">knowledge graph</div>
+          <svg viewBox="0 0 280 130" className="w-full">
+            <g stroke="var(--ink-line)" strokeWidth="1">
+              <path d="M50 70 Q 100 30 150 55" fill="none" />
+              <path d="M150 55 Q 200 80 235 45" fill="none" />
+              <path d="M50 70 Q 110 105 190 95" fill="none" />
+              <path d="M150 55 Q 165 80 190 95" fill="none" />
+            </g>
+            {[
+              { x: 50, y: 70, r: 13, label: 'design' },
+              { x: 150, y: 55, r: 17, label: 'ideas' },
+              { x: 235, y: 45, r: 10, label: 'reading' },
+              { x: 190, y: 95, r: 11, label: 'work' },
+            ].map(n => (
+              <g key={n.label}>
+                <circle cx={n.x} cy={n.y} r={n.r} fill="var(--accent)" opacity="0.9" />
+                <circle cx={n.x} cy={n.y} r={n.r} fill="none" stroke="var(--ink)" strokeWidth="1.5" />
+                <text x={n.x} y={n.y - n.r - 6} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono" fill="var(--ink-soft)">
+                  {n.label}
+                </text>
+              </g>
+            ))}
+          </svg>
         </div>
       ),
     },
     {
-      span: '',
-      title: '⌘K everything',
-      desc: 'One keystroke. Search every thought, jump anywhere, run any action.',
-      icon: Command,
-      body: <PaletteMock />,
-    },
-    {
-      span: '',
-      title: 'Memory Lane',
-      desc: 'Past-you resurfaces every morning: yesterday, a week ago, a month ago.',
-      icon: History,
-      body: <MemoryLaneMock />,
-    },
-    {
-      span: '',
-      title: 'Sealed at rest',
-      desc: 'AES-256-GCM with a passphrase only you know. Auto-locks when you walk away.',
-      icon: Shield,
-      body: (
-        <div className="relative h-36 flex items-center justify-center">
-          {[0, 1, 2].map(i => (
-            <motion.div
-              key={i}
-              className="absolute rounded-full border border-emerald-400/30"
-              initial={{ width: 56, height: 56, opacity: 0 }}
-              animate={{ width: 56 + i * 70, height: 56 + i * 70, opacity: [0, 0.7, 0] }}
-              transition={{ duration: 3, repeat: Infinity, delay: i * 0.9 }}
-            />
-          ))}
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-            <Lock size={22} className="text-white" />
+      num: '04',
+      title: 'Sealed, if you want it sealed',
+      body: 'AES-256 encryption at rest with a passphrase only you know. Auto-locks when you step away. No server ever sees a byte — there is no server.',
+      icon: Lock,
+      demo: (
+        <div className="card-ink-static rounded-sm p-5 rotate-[1deg]">
+          <div className="flex items-start justify-between mb-4">
+            <div className="font-label text-[10px] text-ink-faint">vault status</div>
+            <span className="stamp text-[10px] text-accent">sealed</span>
           </div>
-        </div>
-      ),
-    },
-    {
-      span: '',
-      title: 'Nothing ever leaves',
-      desc: 'No account. No server. No telemetry. Your knowledge lives on your device — export it any time.',
-      icon: HardDrive,
-      body: (
-        <div className="flex items-center justify-center h-36">
-          <div className="text-center">
-            <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400 tabular-nums">0</div>
-            <div className="text-gray-400 text-sm mt-1">bytes sent to a server, ever</div>
+          <div className="font-label text-xs text-ink-soft space-y-2">
+            <div>cipher ......... AES-256-GCM</div>
+            <div>key ............ passphrase-derived</div>
+            <div>server ......... none. ever.</div>
+            <div>auto-lock ...... 15 min idle</div>
           </div>
-        </div>
-      ),
-    },
-    {
-      span: '',
-      title: 'Organized before you blink',
-      desc: 'Tags, summaries, categories, and reminders — computed on-device the instant you save.',
-      icon: Zap,
-      body: (
-        <div className="space-y-2">
-          {['#design', '#health', '#reading'].map((tag, i) => (
-            <motion.div
-              key={tag}
-              initial={{ opacity: 0, x: -14 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 + i * 0.15 }}
-              className="flex items-center gap-2 text-sm"
-            >
-              <Sparkles size={12} className="text-emerald-400" />
-              <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-xs">{tag}</span>
-              <span className="text-gray-500 text-xs">auto-applied</span>
-            </motion.div>
-          ))}
         </div>
       ),
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#050508] text-white overflow-x-hidden relative noise">
-      {/* Ambient gradient mesh */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute -top-[20%] left-[10%] w-[46rem] h-[46rem] rounded-full bg-emerald-500/[0.08] blur-[140px]" />
-        <div className="absolute top-[30%] -right-[10%] w-[40rem] h-[40rem] rounded-full bg-blue-500/[0.08] blur-[140px]" />
-        <div className="absolute bottom-[-10%] left-[30%] w-[36rem] h-[36rem] rounded-full bg-purple-500/[0.06] blur-[140px]" />
-      </div>
-
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <Particles
-          particleColors={['#ffffff', '#ffffff', '#ffffff']}
-          particleCount={260}
-          particleSpread={12}
-          speed={0.06}
-          particleBaseSize={50}
-          moveParticlesOnHover={true}
-          particleHoverFactor={0.25}
-          alphaParticles={false}
-          disableRotation={false}
-          sizeRandomness={0}
-          cameraDistance={20}
-          className="opacity-40"
-        />
-      </div>
-
+    <div className="min-h-screen bg-paper text-ink relative overflow-x-hidden noise">
       {/* Nav */}
       <motion.header
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="fixed top-4 left-4 right-4 z-40 bg-black/30 backdrop-blur-2xl border border-white/10 rounded-2xl"
+        className="sticky top-0 z-50 bg-paper/90 backdrop-blur-md border-b-[1.5px] border-ink"
       >
-        <div className="px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Sparkles className="text-white" size={20} />
-            </div>
-            <span className="text-2xl font-bold tracking-tight">supermind.</span>
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-3xl tracking-tight">supermind</span>
+            <span className="w-2 h-2 rounded-full bg-accent inline-block" />
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onAbout}
-              className="px-5 py-2.5 text-white/70 hover:text-white transition-colors font-medium text-sm"
-            >
+          <div className="flex items-center gap-6">
+            <button onClick={onAbout} className="font-label text-xs text-ink-soft hover:text-ink transition-colors">
               About
             </button>
             <button
               onClick={onGetStarted}
-              className="haptic px-6 py-2.5 bg-white text-black hover:bg-gray-100 font-semibold rounded-xl transition-colors text-sm"
+              className="btn-ink haptic font-label text-xs px-5 py-2.5 rounded-sm"
             >
-              Get Started
+              Get Started →
             </button>
           </div>
         </div>
       </motion.header>
 
       {/* Hero */}
-      <motion.section
-        style={{ y: heroY, opacity: heroOpacity }}
-        className="relative pt-44 pb-10 px-6 z-10"
-      >
-        <div className="max-w-5xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.06] backdrop-blur-sm border border-white/10 rounded-full text-sm font-medium mb-10 text-gray-300"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Local-first · Encrypted · Yours
-          </motion.div>
+      <section className="relative dot-grid">
+        <div className="max-w-6xl mx-auto px-6 pt-20 pb-28 grid lg:grid-cols-[1.1fr_1fr] gap-16 items-center">
+          <div>
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="font-label text-[11px] text-accent mb-8"
+            >
+              [ a local-first second brain ]
+            </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.1 }}
-            className="text-6xl md:text-[5.4rem] font-bold leading-[1.04] tracking-tight mb-8"
-          >
-            never forget
-            <br />
-            <RotatingWord />
-            <span className="text-white"> again</span>
-          </motion.h1>
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="font-display text-6xl md:text-[5.5rem] leading-[0.98] tracking-tight mb-8"
+            >
+              A mind that
+              <br />
+              <em className="marker">never forgets<span className="text-accent">.</span></em>
+            </motion.h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.25 }}
-            className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto leading-relaxed mb-12"
-          >
-            The second brain that organizes itself, answers in a keystroke,
-            and never sends a byte to anyone's server.
-          </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+              className="text-lg text-ink-soft max-w-md leading-relaxed mb-10"
+            >
+              Every note, link, and stray thought — captured in a keystroke, filed by
+              an organizer that lives on your device, and found again the moment you need it.
+            </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-5 mb-20"
-          >
-            <Magnetic>
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.24 }}
+              className="flex items-center gap-5"
+            >
               <button
                 onClick={onGetStarted}
-                className="haptic group px-10 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 rounded-2xl font-bold text-lg text-white flex items-center gap-3 shadow-[0_20px_60px_-12px_rgba(16,185,129,0.5)]"
+                className="btn-ink haptic px-8 py-4 rounded-sm font-semibold text-base inline-flex items-center gap-3"
               >
-                Start Building Your Brain
-                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                Open your notebook
+                <ArrowRight size={18} />
               </button>
-            </Magnetic>
-            <button
-              onClick={onAbout}
-              className="px-7 py-4 text-gray-300 hover:text-white font-medium transition-colors"
-            >
-              How it's built →
-            </button>
-          </motion.div>
-
-          {/* Product frame */}
-          <motion.div
-            initial={{ opacity: 0, y: 60, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ duration: 1, delay: 0.55, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <TiltFrame>
-              <div className="glow-frame rounded-3xl bg-[#0a0a10]/90 backdrop-blur-xl shadow-[0_60px_120px_-30px_rgba(0,0,0,0.9)] overflow-hidden text-left">
-                {/* Window chrome */}
-                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-white/[0.07]">
-                  <div className="flex gap-1.5">
-                    <div className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-                    <div className="w-3 h-3 rounded-full bg-[#febc2e]" />
-                    <div className="w-3 h-3 rounded-full bg-[#28c840]" />
-                  </div>
-                  <div className="flex-1 flex justify-center">
-                    <div className="flex items-center gap-2 px-4 py-1 rounded-lg bg-white/[0.05] text-gray-500 text-xs">
-                      <Lock size={10} />
-                      supermind — everything stays on this device
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 text-gray-600 text-xs">
-                    <Command size={11} />K
-                  </div>
-                </div>
-                {/* Graph viewport */}
-                <div className="relative h-[380px] md:h-[440px]">
-                  <HeroGraph className="absolute inset-0 w-full h-full" />
-                  {/* floating stat chips */}
-                  <div className="absolute bottom-5 left-5 flex gap-3">
-                    {[
-                      { icon: Brain, label: '128 thoughts' },
-                      { icon: Clock, label: '12-day streak' },
-                      { icon: Shield, label: 'encrypted' },
-                    ].map((chip) => (
-                      <div key={chip.label} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur border border-white/10 text-xs text-gray-300">
-                        <chip.icon size={11} className="text-emerald-400" />
-                        {chip.label}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="font-label text-[10px] text-ink-faint leading-relaxed">
+                no account<br />no server<br />no catch
               </div>
-            </TiltFrame>
-          </motion.div>
-        </div>
-      </motion.section>
-
-      {/* Bento grid */}
-      <section className="py-28 px-6 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-5">
-              Built like it <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">matters</span>
-            </h2>
-            <p className="text-lg text-gray-400 max-w-2xl mx-auto">
-              Every feature below is real, works offline, and runs entirely on your device.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
-            {bento.map((cell, index) => (
-              <motion.div
-                key={cell.title}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-80px' }}
-                transition={{ duration: 0.6, delay: (index % 3) * 0.12 }}
-                className={`${cell.span} group flex flex-col rounded-3xl bg-white/[0.035] hover:bg-white/[0.055] border border-white/[0.08] hover:border-white/[0.16] p-7 transition-colors duration-300`}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center">
-                    <cell.icon size={16} className="text-emerald-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold">{cell.title}</h3>
-                </div>
-                <p className="text-gray-400 text-sm leading-relaxed mb-6">{cell.desc}</p>
-                <div className="mt-auto">{cell.body}</div>
-              </motion.div>
-            ))}
+            </motion.div>
           </div>
-        </div>
-      </section>
 
-      {/* How it works */}
-      <section className="py-24 px-6 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-4xl md:text-5xl font-bold tracking-tight text-center mb-16"
-          >
-            Thirty seconds to a <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">second brain</span>
-          </motion.h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 relative">
-            <div className="hidden md:block absolute top-12 left-[18%] right-[18%] h-px bg-gradient-to-r from-emerald-500/40 via-blue-500/40 to-purple-500/40" />
-            {[
-              { step: '01', title: 'Name yourself', desc: 'That\'s the entire sign-up. Optionally seal everything with a passphrase.' },
-              { step: '02', title: 'Capture anything', desc: 'Notes, links, images, files. Tagged, summarized, and filed before you blink.' },
-              { step: '03', title: 'Watch it connect', desc: 'Search in a keystroke, browse the graph, and let Memory Lane surprise you.' },
-            ].map((item, index) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.15 }}
-                className="relative text-center px-4"
-              >
-                <div className="relative w-24 h-24 mx-auto mb-6 rounded-3xl bg-[#0a0a10] border border-white/10 flex items-center justify-center">
-                  <span className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-blue-400 tabular-nums">{item.step}</span>
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{item.title}</h3>
-                <p className="text-gray-400 leading-relaxed text-sm">{item.desc}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-28 px-6 relative z-10">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto"
-        >
-          <div className="glow-frame rounded-[2rem] bg-[#0a0a10]/80 backdrop-blur-xl p-14 md:p-20 text-center relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(16,185,129,0.15),transparent_60%)]" />
-            <div className="relative">
-              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
-                your mind,<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-blue-400 to-purple-400 text-shine">beautifully kept</span>
-              </h2>
-              <p className="text-lg text-gray-400 mb-12 max-w-xl mx-auto">
-                No account. No cloud. No catch. Open it and start capturing —
-                it's already yours.
+          {/* Card collage */}
+          <motion.div style={{ y: collageY }} className="relative h-[460px] hidden lg:block">
+            <IndexCard rotate={-4} delay={0.3} className="top-2 left-2 w-64 z-10">
+              <Tape className="-top-3 left-16 rotate-[-4deg]" />
+              <div className="font-label text-[10px] text-ink-faint mb-2">note · 09:41</div>
+              <p className="font-display text-xl leading-snug">
+                Call nonna about the pasta recipe — the one with the burnt butter.
               </p>
-              <Magnetic>
-                <button
-                  onClick={onGetStarted}
-                  className="haptic px-12 py-4 bg-white text-black rounded-2xl font-bold text-lg hover:bg-gray-100 transition-colors shadow-[0_20px_60px_-12px_rgba(255,255,255,0.3)]"
-                >
-                  Open supermind
-                </button>
-              </Magnetic>
+              <div className="flex gap-2 mt-3">
+                <span className="font-label text-[10px] text-accent">#family</span>
+                <span className="font-label text-[10px] text-accent">#recipes</span>
+              </div>
+            </IndexCard>
+
+            <IndexCard rotate={3} delay={0.45} className="top-24 right-0 w-60 z-20">
+              <div className="font-label text-[10px] text-ink-faint mb-2 flex items-center gap-1">
+                <LinkIcon size={10} /> link · saved
+              </div>
+              <p className="text-sm text-ink leading-relaxed">
+                "How spaced repetition rewires long-term memory" — 12 min read
+              </p>
+              <div className="mt-3 pt-3 border-t border-[var(--ink-line)] flex justify-between items-center">
+                <span className="font-label text-[10px] text-accent">#learning</span>
+                <span className="font-label text-[9px] text-ink-faint">reminder: sun</span>
+              </div>
+            </IndexCard>
+
+            <IndexCard rotate={-2} delay={0.6} className="bottom-16 left-10 w-72 z-30">
+              <Tape className="-top-3 right-10 rotate-[3deg]" />
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-label text-[10px] text-ink-faint">memory lane</div>
+                <History size={12} className="text-accent" />
+              </div>
+              <p className="font-display text-lg leading-snug mb-2">
+                One month ago you wrote:
+              </p>
+              <p className="text-sm text-ink-soft italic">
+                "Start the studio. Stop waiting for permission."
+              </p>
+            </IndexCard>
+
+            <IndexCard rotate={5} delay={0.75} className="bottom-2 right-8 w-44 z-10">
+              <div className="stamp text-[10px] text-accent inline-block mb-3">encrypted</div>
+              <div className="font-label text-[10px] text-ink-soft leading-relaxed">
+                aes-256-gcm<br />
+                key: yours only<br />
+                server: none
+              </div>
+            </IndexCard>
+          </motion.div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-6 pb-10 flex justify-center lg:justify-start">
+          <motion.div
+            animate={{ y: [0, 6, 0] }}
+            transition={{ duration: 1.8, repeat: Infinity }}
+            className="font-label text-[10px] text-ink-faint flex items-center gap-2"
+          >
+            <ArrowDown size={12} /> scroll
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Marquee */}
+      <div className="border-y-[1.5px] border-ink bg-accent overflow-hidden py-3 select-none" aria-hidden>
+        <div className="animate-marquee flex whitespace-nowrap w-max">
+          {[0, 1].map(half => (
+            <div key={half} className="flex">
+              {[...MARQUEE_WORDS, ...MARQUEE_WORDS].map((word, i) => (
+                <span key={`${half}-${i}`} className="font-label text-sm text-paper mx-6 flex items-center gap-6">
+                  {word} <span className="w-1.5 h-1.5 rounded-full bg-paper inline-block" />
+                </span>
+              ))}
             </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Chapters */}
+      <section className="max-w-6xl mx-auto px-6 py-28 space-y-28">
+        {chapters.map((chapter, i) => (
+          <motion.div
+            key={chapter.num}
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: '-100px' }}
+            transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+            className={`grid lg:grid-cols-2 gap-14 items-center ${i % 2 ? 'lg:[&>*:first-child]:order-2' : ''}`}
+          >
+            <div>
+              <div className="flex items-baseline gap-4 mb-6">
+                <span className="font-display text-7xl text-accent leading-none">{chapter.num}</span>
+                <chapter.icon size={20} className="text-ink-faint" />
+              </div>
+              <h2 className="font-display text-4xl md:text-5xl leading-tight tracking-tight mb-5">
+                {chapter.title}
+              </h2>
+              <p className="text-ink-soft text-lg leading-relaxed max-w-md">{chapter.body}</p>
+            </div>
+            <div className="max-w-sm mx-auto w-full">{chapter.demo}</div>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* Command strip */}
+      <section className="border-y-[1.5px] border-ink bg-paper-raised">
+        <div className="max-w-6xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div>
+            <h3 className="font-display text-3xl md:text-4xl tracking-tight mb-2">
+              The whole notebook, <em className="marker-accent">one keystroke away</em>
+            </h3>
+            <p className="text-ink-soft">Search every thought. Jump anywhere. Run any action.</p>
+          </div>
+          <div className="card-ink-static rounded-sm px-6 py-4 flex items-center gap-4 rotate-[-1deg]">
+            <span className="font-label text-xs text-ink-soft flex items-center gap-1.5">
+              <Command size={13} /> K
+            </span>
+            <span className="w-px h-6 bg-[var(--ink-line)]" />
+            <span className="font-display text-xl italic text-ink-soft">ask anything…</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Manifesto */}
+      <section className="max-w-4xl mx-auto px-6 py-32 text-center ruled">
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="font-label text-[11px] text-accent mb-10"
+        >
+          [ the principle ]
+        </motion.p>
+        <motion.blockquote
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="font-display text-4xl md:text-6xl leading-[1.12] tracking-tight"
+        >
+          Your thoughts belong <em className="marker">on your device</em>,
+          <br />
+          not on someone's <span className="line-through decoration-[var(--accent)] decoration-4">server</span>.
+        </motion.blockquote>
+        <motion.div
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3 }}
+          className="mt-12 flex items-center justify-center gap-8 font-label text-[10px] text-ink-faint"
+        >
+          <span className="flex items-center gap-1.5"><HardDrive size={11} /> local-first</span>
+          <span className="flex items-center gap-1.5"><Lock size={11} /> aes-256 optional</span>
+          <span>0 bytes uploaded</span>
+        </motion.div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="max-w-6xl mx-auto px-6 pb-32">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="card-ink-static rounded-sm px-8 py-16 md:px-16 text-center relative overflow-hidden"
+        >
+          <div className="absolute inset-0 dot-grid opacity-60" aria-hidden />
+          <div className="relative">
+            <h2 className="font-display text-5xl md:text-7xl tracking-tight leading-[1.02] mb-6">
+              Begin your
+              <br />
+              <em className="marker">second brain.</em>
+            </h2>
+            <p className="text-ink-soft text-lg mb-10">
+              Thirty seconds. A name. That's the whole sign-up.
+            </p>
+            <button
+              onClick={onGetStarted}
+              className="btn-ink haptic px-10 py-4 rounded-sm font-semibold text-lg inline-flex items-center gap-3"
+            >
+              Open your notebook <ArrowRight size={19} />
+            </button>
           </div>
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/[0.07] relative z-10">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-lg flex items-center justify-center">
-              <Sparkles className="text-white" size={14} />
-            </div>
-            <span className="text-lg font-bold">supermind.</span>
+      {/* Colophon footer */}
+      <footer className="border-t-[1.5px] border-ink">
+        <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-xl">supermind</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
           </div>
-          <div className="flex items-center gap-6 text-sm text-gray-500">
-            <button onClick={onAbout} className="hover:text-white transition-colors">About</button>
-            <span>© {new Date().getFullYear()} — your thoughts, your rules, your privacy.</span>
+          <div className="font-label text-[10px] text-ink-faint text-center md:text-right leading-relaxed">
+            set in instrument serif & jetbrains mono · runs entirely on your device
+            <br />
+            © {new Date().getFullYear()} — your thoughts, your rules, your privacy.{' '}
+            <button onClick={onAbout} className="underline hover:text-ink transition-colors">about</button>
           </div>
         </div>
       </footer>
