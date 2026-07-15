@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
+  Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, Zap,
   Shield, Grid, Clock, Smartphone,
   Network, Download, ChevronRight, CalendarClock,
 } from 'lucide-react';
@@ -21,6 +21,7 @@ import Dashboard from './components/Dashboard';
 import KnowledgeGraph from './components/KnowledgeGraph';
 import CommandPalette from './components/CommandPalette';
 import Legend from './components/Legend';
+import MadeBadge from './components/MadeBadge';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
@@ -86,7 +87,6 @@ function App() {
     if (outcome !== 'accepted') return;
     setInstallPrompt(null);
   };
-  const [showWelcome, setShowWelcome] = React.useState(true);
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
   useKeyboardShortcuts();
@@ -145,8 +145,6 @@ function App() {
     }
   }, [settings.theme]);
 
-  const isDark = settings.theme === 'dark' ||
-    (settings.theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const handleCreateProfile = async (name: string, email: string, encryptionPassword?: string) => {
     const newUser = {
@@ -560,39 +558,6 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
                 {...pageMotion}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
-                <AnimatePresence>
-                  {showWelcome && content.length === 0 && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95, height: 0 }}
-                      className="relative overflow-hidden"
-                    >
-                      <div className="relative p-8 lg:p-12 text-center">
-                        <h2 className="text-3xl font-bold text-primary mb-4">Your timeline is empty</h2>
-                        <p className="text-secondary mb-6">Everything you save will show up here, newest first.</p>
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setUploadModalOpen(true)}
-                          className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg inline-flex items-center gap-3"
-                        >
-                          <Plus size={20} />
-                          Add Your First Item
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={() => setShowWelcome(false)}
-                          className="absolute top-4 right-4 p-2 glass-button rounded-full text-secondary hover:text-primary transition-all duration-200"
-                        >
-                          <X size={18} />
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
                 <Timeline
                   content={content}
                   filter={filter}
@@ -618,58 +583,53 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
                 {...pageMotion}
                 className="h-full p-6 overflow-y-auto custom-scrollbar"
               >
-                <div className="max-w-2xl mx-auto pb-24">
-                  <div className="text-center mb-8">
-                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-white' : 'bg-black'}`}>
-                      <User className={isDark ? 'text-black' : 'text-white'} size={32} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-primary mb-2">Profile & Settings</h2>
-                    <p className="text-secondary">Manage your local profile and preferences</p>
-                  </div>
+                <div className="max-w-xl mx-auto pt-6 pb-24">
+                  {/* The flyleaf: whose notebook this is */}
+                  <p className="font-label text-[10px] text-accent mb-2">the flyleaf</p>
+                  <h2 className="font-display text-4xl sm:text-5xl text-ink leading-tight mb-1">
+                    This notebook belongs to{' '}
+                    <span className="marker">{user?.name || 'you'}</span>
+                    <span className="text-accent">.</span>
+                  </h2>
+                  {user?.email && (
+                    <p className="font-mono text-xs text-ink-soft mt-2">{user.email}</p>
+                  )}
+                  <p className="font-label text-[9px] text-ink-faint mt-3">
+                    local profile · {content.length} entr{content.length === 1 ? 'y' : 'ies'} ·{' '}
+                    {settings.security.encryptionEnabled ? 'sealed with aes-256' : 'unsealed'}
+                  </p>
 
-                  <div className="glass rounded-2xl p-6 mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${isDark ? 'bg-white' : 'bg-black'}`}>
-                        <span className={`font-bold text-xl ${isDark ? 'text-black' : 'text-white'}`}>
-                          {user?.name?.[0]?.toUpperCase() || 'U'}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-primary">{user?.name || 'User'}</h3>
-                        {user?.email && <p className="text-secondary">{user.email}</p>}
-                        <div className={`inline-block px-3 py-1 rounded-full text-sm mt-2 ${isDark ? 'bg-white/10 text-white' : 'bg-black/10 text-black'}`}>
-                          Local profile · {content.length} items
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
+                  {/* Index of settings pages */}
+                  <div className="mt-10 border-t-2 border-[var(--ink)]">
                     {[
-                      { icon: Settings, label: 'Settings', action: () => setSettingsModalOpen(true) },
+                      { icon: Settings, label: 'Settings', detail: 'the fine print, all sections', action: () => setSettingsModalOpen(true) },
+                      { icon: Shield, label: 'Privacy & Security', detail: 'encryption, auto-lock, the seal', action: () => setSettingsModalOpen(true, 'security') },
+                      { icon: CalendarClock, label: 'Reminders', detail: 'deadline detection on or off', action: () => setSettingsModalOpen(true, 'notifications') },
                       {
                         icon: Download,
-                        label: 'Export Data',
+                        label: 'Export everything',
+                        detail: 'one JSON file, yours to keep',
                         action: () => {
                           exportContent();
                           toast.success('Export downloaded');
                         },
                       },
-                      { icon: Shield, label: 'Privacy & Security', action: () => setSettingsModalOpen(true, 'security') },
-                      { icon: CalendarClock, label: 'Notifications & Reminders', action: () => setSettingsModalOpen(true, 'notifications') },
                     ].map((item) => (
-                      <motion.button
+                      <button
                         key={item.label}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={item.action}
-                        className="w-full flex items-center gap-4 p-4 glass rounded-xl hover:shadow-lg transition-all duration-200"
+                        onClick={() => { hapticTap(); item.action(); }}
+                        className="haptic group w-full flex items-center gap-4 py-4 border-b border-[var(--ink-line)] text-left transition-colors hover:bg-[var(--accent-soft)]/40 -mx-3 px-3"
                       >
-                        <item.icon className="text-primary" size={20} />
-                        <span className="text-primary font-medium">{item.label}</span>
-                        <ChevronRight className="text-secondary ml-auto" size={16} />
-                      </motion.button>
+                        <item.icon size={16} className="text-ink-faint group-hover:text-accent transition-colors flex-shrink-0" />
+                        <span className="font-display text-xl text-ink">{item.label}</span>
+                        <span className="font-label text-[9px] text-ink-faint ml-auto hidden sm:block">{item.detail}</span>
+                        <ChevronRight size={14} className="text-ink-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                      </button>
                     ))}
+                  </div>
+
+                  <div className="mt-10 flex justify-center">
+                    <MadeBadge />
                   </div>
                 </div>
               </motion.div>
