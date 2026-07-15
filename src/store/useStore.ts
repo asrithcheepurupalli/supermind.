@@ -59,7 +59,7 @@ interface AppState {
 
   // UI State
   filter: FilterState;
-  activeView: 'home' | 'timeline' | 'graph' | 'analytics' | 'insights' | 'profile';
+  activeView: 'home' | 'timeline' | 'graph' | 'almanac' | 'profile';
   isUploadModalOpen: boolean;
   isSettingsModalOpen: boolean;
   settingsSection: string;
@@ -479,6 +479,25 @@ export const useStore = create<AppState>()(
           };
         }
         return state;
+      },
+      merge: (persisted, current) => {
+        const state = (persisted ?? {}) as Partial<AppState>;
+        // Deep-merge settings with defaults so a partial/older settings
+        // object can never crash the app on a missing key.
+        const s = state.settings;
+        return {
+          ...current,
+          ...state,
+          settings: {
+            ...defaultSettings,
+            ...s,
+            notifications: { ...defaultSettings.notifications, ...s?.notifications },
+            privacy: { ...defaultSettings.privacy, ...s?.privacy },
+            ai: { ...defaultSettings.ai, ...s?.ai },
+            display: { ...defaultSettings.display, ...s?.display },
+            security: { ...defaultSettings.security, ...s?.security },
+          },
+        };
       },
     }
   )

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Network, MousePointerClick, Pause, Play, Shuffle } from 'lucide-react';
+import { Pause, Play, Shuffle } from 'lucide-react';
 import { SavedContent } from '../types';
 import { useStore, defaultFilter } from '../store/useStore';
 import { hapticTap } from '../utils/haptics';
@@ -107,6 +107,22 @@ export default function KnowledgeGraph() {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Paper Mind inks, read from the live CSS tokens. Re-read every frame:
+    // this effect can run before App toggles the `.dark` class, and reading
+    // once at setup would freeze the wrong palette onto the canvas.
+    let INK = '#17150f';
+    let ACCENT = '#f04e23';
+    let PAPER = '#fffdf7';
+    let INK_LINE = 'rgba(23,21,15,0.16)';
+    const readTokens = () => {
+      const css = getComputedStyle(document.documentElement);
+      INK = css.getPropertyValue('--ink').trim() || INK;
+      ACCENT = css.getPropertyValue('--accent').trim() || ACCENT;
+      PAPER = css.getPropertyValue('--paper-raised').trim() || PAPER;
+      INK_LINE = css.getPropertyValue('--ink-line').trim() || INK_LINE;
+    };
+    readTokens();
 
     let width = container.clientWidth;
     let height = container.clientHeight;
@@ -226,21 +242,16 @@ export default function KnowledgeGraph() {
       canvas.style.cursor = hovered >= 0 ? 'pointer' : 'default';
 
       // ---- Draw ----
+      readTokens();
       ctx.clearRect(0, 0, width, height);
 
-      // Depth field: faint dot grid + radial vignette glow behind the cluster.
-      const gridInk = isDark ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.05)';
-      ctx.fillStyle = gridInk;
+      // Notebook dot grid behind the constellation.
+      ctx.fillStyle = INK_LINE;
       for (let gx = 14; gx < width; gx += 26) {
         for (let gy = 14; gy < height; gy += 26) {
-          ctx.fillRect(gx, gy, 1.2, 1.2);
+          ctx.fillRect(gx, gy, 1.1, 1.1);
         }
       }
-      const vignette = ctx.createRadialGradient(width / 2, height / 2, 60, width / 2, height / 2, Math.max(width, height) * 0.6);
-      vignette.addColorStop(0, isDark ? 'rgba(16,185,129,0.05)' : 'rgba(16,185,129,0.04)');
-      vignette.addColorStop(1, 'rgba(16,185,129,0)');
-      ctx.fillStyle = vignette;
-      ctx.fillRect(0, 0, width, height);
 
       // Curved gradient edges with energy particles flowing along them.
       const quadPoint = (ax: number, ay: number, cx: number, cy: number, bx: number, by: number, t: number) => {
@@ -267,16 +278,14 @@ export default function KnowledgeGraph() {
         const cx = mx - dy * (0.14 + sway);
         const cy = my + dx * (0.14 + sway);
 
-        const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-        const edgeAlpha = dimmedEdge ? 0.04 : connectedToHover ? 0.75 : Math.min(0.34, 0.1 + e.weight * 0.07);
-        grad.addColorStop(0, `hsla(${a.hue}, 80%, ${isDark ? 62 : 45}%, ${edgeAlpha})`);
-        grad.addColorStop(1, `hsla(${b.hue}, 80%, ${isDark ? 62 : 45}%, ${edgeAlpha})`);
-        ctx.strokeStyle = grad;
-        ctx.lineWidth = connectedToHover ? 2 : Math.min(1.8, 0.7 + e.weight * 0.3);
+        ctx.globalAlpha = dimmedEdge ? 0.12 : connectedToHover ? 0.95 : Math.min(0.55, 0.22 + e.weight * 0.1);
+        ctx.strokeStyle = connectedToHover ? ACCENT : INK;
+        ctx.lineWidth = connectedToHover ? 1.8 : Math.min(1.5, 0.6 + e.weight * 0.25);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
         ctx.quadraticCurveTo(cx, cy, b.x, b.y);
         ctx.stroke();
+        ctx.globalAlpha = 1;
 
         // Energy particles: one per strong edge, two when hovered.
         if (!dimmedEdge && (e.weight >= 2 || connectedToHover)) {
@@ -285,13 +294,10 @@ export default function KnowledgeGraph() {
           for (let pi = 0; pi < particleCount; pi++) {
             const t = ((time * speed + ei * 0.37 + pi * 0.5) % 1);
             const pt = quadPoint(a.x, a.y, cx, cy, b.x, b.y, t);
-            const pr = connectedToHover ? 2.6 : 1.8;
-            const pglow = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pr * 4);
-            pglow.addColorStop(0, `hsla(160, 90%, ${isDark ? 70 : 45}%, 0.9)`);
-            pglow.addColorStop(1, 'hsla(160, 90%, 60%, 0)');
-            ctx.fillStyle = pglow;
+            const pr = connectedToHover ? 2.4 : 1.7;
+            ctx.fillStyle = ACCENT;
             ctx.beginPath();
-            ctx.arc(pt.x, pt.y, pr * 4, 0, Math.PI * 2);
+            ctx.arc(pt.x, pt.y, pr, 0, Math.PI * 2);
             ctx.fill();
           }
         }
@@ -306,51 +312,30 @@ export default function KnowledgeGraph() {
         const breathe = 1 + Math.sin(time * 2 + n.phase) * 0.05;
         const r = n.radius * (isHovered ? 1.28 : breathe);
 
-        const light = isDark ? 58 : 46;
-        const alpha = dimmed ? 0.18 : 1;
+        const alpha = dimmed ? 0.22 : 1;
+        // Big tags are vermilion seals; small tags are hollow ink rings.
+        const filled = n.radius > 13 || isHovered;
 
-        // outer bloom
-        const glow = ctx.createRadialGradient(n.x, n.y, r * 0.4, n.x, n.y, r * (isHovered ? 3 : 2.3));
-        glow.addColorStop(0, `hsla(${n.hue}, 78%, ${light}%, ${(isHovered ? 0.4 : 0.24) * alpha})`);
-        glow.addColorStop(1, `hsla(${n.hue}, 78%, ${light}%, 0)`);
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r * (isHovered ? 3 : 2.3), 0, Math.PI * 2);
-        ctx.fill();
-
-        // orb core: off-center gradient reads as a lit sphere
-        const core = ctx.createRadialGradient(n.x - r * 0.35, n.y - r * 0.42, r * 0.12, n.x, n.y, r);
-        core.addColorStop(0, `hsla(${n.hue}, 82%, ${light + 22}%, ${alpha})`);
-        core.addColorStop(0.55, `hsla(${n.hue}, 74%, ${light}%, ${alpha})`);
-        core.addColorStop(1, `hsla(${n.hue}, 80%, ${Math.max(20, light - 20)}%, ${alpha})`);
-        ctx.fillStyle = core;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = isHovered ? INK : filled ? ACCENT : PAPER;
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
         ctx.fill();
-
-        // specular glint
-        ctx.fillStyle = `rgba(255,255,255,${0.5 * alpha})`;
-        ctx.beginPath();
-        ctx.arc(n.x - r * 0.34, n.y - r * 0.4, Math.max(1.2, r * 0.16), 0, Math.PI * 2);
-        ctx.fill();
-
-        // surface ring separates overlapping marks
-        ctx.strokeStyle = isDark ? 'rgba(3, 7, 18, 0.9)' : 'rgba(255, 255, 255, 0.95)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = INK;
+        ctx.lineWidth = 1.6;
         ctx.stroke();
+        ctx.globalAlpha = 1;
 
-        // hover halo: slowly rotating dashed orbit
+        // hover: hand-drawn dashed orbit, slowly rotating
         if (isHovered) {
           ctx.save();
           ctx.translate(n.x, n.y);
-          ctx.rotate(time * 1.8);
-          ctx.setLineDash([4, 7]);
-          ctx.strokeStyle = `hsla(${n.hue}, 85%, ${isDark ? 70 : 45}%, 0.8)`;
+          ctx.rotate(time * 1.6);
+          ctx.setLineDash([5, 6]);
+          ctx.strokeStyle = ACCENT;
           ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(0, 0, r + 7, 0, Math.PI * 2);
+          ctx.arc(0, 0, r + 8, 0, Math.PI * 2);
           ctx.stroke();
           ctx.restore();
         }
@@ -358,24 +343,26 @@ export default function KnowledgeGraph() {
         // labels in ink with a soft pill backdrop, never in series color
         const showLabel = isHovered || isNeighbor || n.radius > 10;
         if (showLabel && !dimmed) {
-          const fontSize = isHovered ? 13 : 11.5;
-          ctx.font = `${isHovered ? 600 : 500} ${fontSize}px 'Inter Variable', -apple-system, sans-serif`;
+          const fontSize = isHovered ? 11 : 9.5;
+          ctx.font = `500 ${fontSize}px 'JetBrains Mono', ui-monospace, monospace`;
           ctx.textAlign = 'center';
-          const tw = ctx.measureText(n.tag).width;
-          const pad = 7;
-          const ly = n.y - r - (isHovered ? 13 : 11);
-          ctx.fillStyle = isDark ? 'rgba(5, 8, 14, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+          const label = n.tag.toUpperCase();
+          const tw = ctx.measureText(label).width;
+          const pad = 6;
+          const ly = n.y - r - (isHovered ? 14 : 11);
+          ctx.fillStyle = PAPER;
+          ctx.strokeStyle = isHovered ? ACCENT : INK_LINE;
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(n.x - tw / 2 - pad, ly - fontSize + 1, tw + pad * 2, fontSize + 9, 8);
+          ctx.roundRect(n.x - tw / 2 - pad, ly - fontSize, tw + pad * 2, fontSize + 8, 2);
           ctx.fill();
-          ctx.fillStyle = isDark
-            ? `rgba(243, 244, 246, ${isHovered ? 1 : 0.9})`
-            : `rgba(17, 24, 39, ${isHovered ? 1 : 0.85})`;
-          ctx.fillText(n.tag, n.x, ly + 4);
+          ctx.stroke();
+          ctx.fillStyle = INK;
+          ctx.fillText(label, n.x, ly + 3);
           if (isHovered) {
-            ctx.font = `400 10.5px 'Inter Variable', -apple-system, sans-serif`;
-            ctx.fillStyle = isDark ? 'rgba(156, 163, 175, 0.95)' : 'rgba(107, 114, 128, 0.95)';
-            ctx.fillText(`${n.count} item${n.count !== 1 ? 's' : ''} · click to explore`, n.x, n.y + r + 18);
+            ctx.font = `500 9px 'JetBrains Mono', ui-monospace, monospace`;
+            ctx.fillStyle = ACCENT;
+            ctx.fillText(`${n.count} ITEM${n.count !== 1 ? 'S' : ''} · CLICK TO OPEN`, n.x, n.y + r + 20);
           }
         }
       }
@@ -395,38 +382,42 @@ export default function KnowledgeGraph() {
   }, [content, isDark, setFilter, setActiveView, seed]);
 
   return (
-    <div className="h-full flex flex-col p-6 max-w-7xl mx-auto w-full">
+    <div className="h-full flex flex-col px-6 pt-8 pb-6 max-w-6xl mx-auto w-full">
+      {/* Plate heading — like a figure in a field notebook */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-4"
+        className="mb-5 flex items-end justify-between gap-4"
       >
-        <div className="inline-flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-xl flex items-center justify-center">
-            <Network className="text-white" size={20} />
-          </div>
-          <h2 className="text-2xl font-bold text-primary">Knowledge Graph</h2>
+        <div>
+          <p className="font-label text-[10px] text-accent mb-2">
+            Plate II · {nonGuideCount} entries · {new Date().toLocaleDateString('en-US', { year: 'numeric' })}
+          </p>
+          <h2 className="font-display text-4xl sm:text-5xl text-ink leading-none">
+            The constellation<span className="text-accent">.</span>
+          </h2>
         </div>
-        <p className="text-secondary text-sm flex items-center justify-center gap-2">
-          <MousePointerClick size={14} />
-          {hoveredTag
-            ? <>Click to explore everything tagged <span className="text-emerald-600 dark:text-emerald-400 font-semibold">#{hoveredTag}</span></>
-            : 'A living map of how your knowledge connects — hover a node, click to dive in'}
+        <p className="font-label text-[9px] text-ink-faint text-right hidden sm:block max-w-[220px] leading-relaxed pb-1">
+          {hoveredTag ? (
+            <>reading: <span className="text-accent">#{hoveredTag}</span> — click to open</>
+          ) : (
+            <>every tag is a star. tags that appear together are drawn together.</>
+          )}
         </p>
       </motion.div>
 
       <motion.div
         ref={containerRef}
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.1 }}
-        className="flex-1 glass-card rounded-3xl overflow-hidden relative min-h-[400px] mb-20 sm:mb-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.08 }}
+        className="card-ink-static flex-1 rounded-sm overflow-hidden relative min-h-[400px] mb-20 sm:mb-4"
       >
         {nonGuideCount < 2 ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
-            <Network size={48} className="text-muted mb-4" />
-            <h3 className="text-xl font-semibold text-primary mb-2">Your graph is waiting to grow</h3>
-            <p className="text-secondary max-w-sm">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8 dot-grid">
+            <span className="stamp mb-5">Uncharted</span>
+            <h3 className="font-display text-3xl text-ink mb-3">Your graph is waiting to grow</h3>
+            <p className="text-ink-soft text-sm max-w-sm leading-relaxed">
               Add a few notes and links — as tags start co-occurring, this becomes a living map
               of your mind's connections.
             </p>
@@ -434,21 +425,31 @@ export default function KnowledgeGraph() {
         ) : (
           <>
             <canvas ref={canvasRef} className="absolute inset-0" />
-            {/* Simulation controls */}
-            <div className="absolute top-4 right-4 flex gap-2">
+            {/* Legend — bottom-left corner, like a map key */}
+            <div className="absolute bottom-3 left-4 pointer-events-none hidden sm:flex items-center gap-4 font-label text-[8px] text-ink-faint">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-[var(--accent)]" /> major theme
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block w-2 h-2 rounded-full border-[1.5px] border-[var(--ink)]" /> minor tag
+              </span>
+              <span className="hidden md:inline">line weight = how often they meet</span>
+            </div>
+            {/* Simulation controls — instrument switches */}
+            <div className="absolute top-3 right-3 flex gap-2">
               <button
                 onClick={() => setPaused(p => !p)}
                 title={paused ? 'Resume motion' : 'Pause motion'}
-                className="haptic w-9 h-9 rounded-xl glass-button flex items-center justify-center text-secondary hover:text-primary"
+                className="btn-paper haptic w-8 h-8 rounded-sm flex items-center justify-center"
               >
-                {paused ? <Play size={14} /> : <Pause size={14} />}
+                {paused ? <Play size={12} /> : <Pause size={12} />}
               </button>
               <button
                 onClick={() => { setPaused(false); setSeed(s => s + 1); }}
                 title="Shuffle layout"
-                className="haptic w-9 h-9 rounded-xl glass-button flex items-center justify-center text-secondary hover:text-primary"
+                className="btn-paper haptic w-8 h-8 rounded-sm flex items-center justify-center"
               >
-                <Shuffle size={14} />
+                <Shuffle size={12} />
               </button>
             </div>
           </>

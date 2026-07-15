@@ -5,7 +5,6 @@ import {
   Plus,
   Clock,
   BarChart3,
-  Brain,
   Network,
   User,
   Moon,
@@ -100,14 +99,9 @@ export default function CommandPalette() {
         run: () => setActiveView('graph'),
       },
       {
-        id: 'view-analytics', label: 'Go to Analytics', icon: BarChart3,
-        keywords: 'analytics stats charts activity go',
-        run: () => setActiveView('analytics'),
-      },
-      {
-        id: 'view-insights', label: 'Go to Insights', icon: Brain,
-        keywords: 'insights patterns suggestions recommendations go',
-        run: () => setActiveView('insights'),
+        id: 'view-almanac', label: 'Go to the Almanac', icon: BarChart3,
+        keywords: 'almanac analytics stats charts activity insights patterns go',
+        run: () => setActiveView('almanac'),
       },
       {
         id: 'view-profile', label: 'Go to Profile', icon: User,

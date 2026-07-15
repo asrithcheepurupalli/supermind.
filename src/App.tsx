@@ -2,8 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
-  Brain, Shield, Grid, Clock, TrendingUp, Sparkles,
-  Network, Lightbulb, Download, ChevronRight, Tag as TagIcon, CalendarClock,
+  Shield, Grid, Clock,
+  Network, Download, ChevronRight, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import LandingPage from './components/LandingPage';
@@ -14,7 +14,7 @@ import AuthModal from './components/AuthModal';
 import SettingsModal from './components/advanced/SettingsModal';
 import EncryptionSetup from './components/EncryptionSetup';
 import SecurityBadge from './components/SecurityBadge';
-import AnalyticsDashboard from './components/advanced/AnalyticsDashboard';
+import Almanac from './components/Almanac';
 import Toast from './components/ui/Toast';
 import AboutPage from './components/AboutPage';
 import Dashboard from './components/Dashboard';
@@ -23,7 +23,6 @@ import CommandPalette from './components/CommandPalette';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
-import { useInsights } from './hooks/useInsights';
 import { hapticTap } from './utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -64,7 +63,6 @@ function App() {
   useAutoLock();
 
   const categories = React.useMemo(() => getCategoriesWithCounts(content), [content]);
-  const insights = useInsights(content);
 
   // Real notifications, derived from the user's own data.
   const remindersEnabled = settings.notifications.reminders;
@@ -193,8 +191,7 @@ function App() {
   const viewSwitcher = [
     { id: 'timeline' as const, icon: Clock, label: 'Timeline' },
     { id: 'graph' as const, icon: Network, label: 'Graph' },
-    { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
-    { id: 'insights' as const, icon: Brain, label: 'Insights' },
+    { id: 'almanac' as const, icon: BarChart3, label: 'Almanac' },
   ];
 
   return (
@@ -408,7 +405,7 @@ function App() {
                             },
                           },
                           { icon: Settings, label: 'Settings', action: () => setSettingsModalOpen(true) },
-                          { icon: Brain, label: 'Insights', action: () => setActiveView('insights') },
+                          { icon: BarChart3, label: 'Almanac', action: () => setActiveView('almanac') },
                         ].map((action) => (
                           <motion.button
                             key={action.label}
@@ -567,155 +564,15 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
               </motion.div>
             )}
 
-            {activeView === 'analytics' && (
+            {activeView === 'almanac' && (
               <motion.div
-                key="analytics"
+                key="almanac"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="h-full p-6 overflow-y-auto custom-scrollbar"
+                className="h-full overflow-y-auto custom-scrollbar"
               >
-                <div className="text-primary">
-                  <AnalyticsDashboard />
-                </div>
-              </motion.div>
-            )}
-
-            {activeView === 'insights' && (
-              <motion.div
-                key="insights"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="h-full p-6 overflow-y-auto custom-scrollbar"
-              >
-                <div className="max-w-6xl mx-auto space-y-6 pb-24">
-                  <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                      <Brain className="text-white" size={32} />
-                    </div>
-                    <h2 className="text-3xl font-bold text-primary mb-2">Insights</h2>
-                    <p className="text-secondary">Patterns and connections computed from your own content — right here on your device</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Tag Connections */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="glass-card rounded-2xl p-6"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <Network className="text-emerald-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Tag Connections</h3>
-                      </div>
-                      {insights.tagConnections.length === 0 ? (
-                        <p className="text-secondary text-sm py-8 text-center">
-                          Add more content — connections appear when tags co-occur across items.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {insights.tagConnections.map((conn) => (
-                            <div key={`${conn.tagA}-${conn.tagB}`} className="flex items-center justify-between p-3 glass-button rounded-xl">
-                              <div className="flex items-center gap-2 text-sm min-w-0">
-                                <TagIcon size={12} className="text-emerald-400 flex-shrink-0" />
-                                <span className="text-primary truncate">{conn.tagA}</span>
-                                <span className="text-muted">↔</span>
-                                <span className="text-primary truncate">{conn.tagB}</span>
-                              </div>
-                              <span className="text-muted text-xs flex-shrink-0 ml-2">{conn.count} items</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-
-                    {/* Related Content */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.1 }}
-                      className="glass-card rounded-2xl p-6"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <Sparkles className="text-purple-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Rediscover</h3>
-                      </div>
-                      {insights.recommendations.length === 0 ? (
-                        <p className="text-secondary text-sm py-8 text-center">
-                          As your library grows, items related to your recent saves will surface here.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          {insights.recommendations.map((rec) => (
-                            <div key={rec.id} className="flex items-center justify-between p-3 glass-button rounded-xl gap-3">
-                              <div className="min-w-0">
-                                <p className="text-primary text-sm truncate">{rec.title}</p>
-                                <p className="text-muted text-xs truncate">{rec.reason}</p>
-                              </div>
-                              <div className={`w-12 h-2 rounded-full overflow-hidden flex-shrink-0 ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                                <div
-                                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                                  style={{ width: `${rec.match}%` }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </motion.div>
-
-                    {/* Your Patterns */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="glass-card rounded-2xl p-6"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <TrendingUp className="text-blue-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Your Patterns</h3>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-secondary">Most active time</span>
-                          <span className="text-blue-400 font-semibold">{insights.peakTime ?? 'Not enough data'}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-secondary">Most saved type</span>
-                          <span className="text-blue-400 font-semibold capitalize">{insights.favoriteType ?? '—'}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-secondary">Week-over-week</span>
-                          <span className={`font-semibold ${insights.weeklyGrowth !== null && insights.weeklyGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {insights.weeklyGrowth === null ? '—' : `${insights.weeklyGrowth >= 0 ? '+' : ''}${insights.weeklyGrowth}%`}
-                          </span>
-                        </div>
-                      </div>
-                    </motion.div>
-
-                    {/* Suggestions */}
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.3 }}
-                      className="glass-card rounded-2xl p-6"
-                    >
-                      <div className="flex items-center gap-3 mb-4">
-                        <Lightbulb className="text-yellow-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Suggestions</h3>
-                      </div>
-                      <div className="space-y-3">
-                        {insights.suggestions.map((s) => (
-                          <div key={s.title} className="p-3 glass-button rounded-xl">
-                            <p className="text-primary text-sm mb-1">{s.title}</p>
-                            <p className="text-muted text-xs">{s.detail}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </div>
-                </div>
+                <Almanac />
               </motion.div>
             )}
 
