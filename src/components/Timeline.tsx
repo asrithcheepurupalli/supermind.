@@ -23,7 +23,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
   const [viewMode, setViewMode] = React.useState<'grid' | 'list' | 'masonry'>('grid');
   const [selectedItems, setSelectedItems] = React.useState<string[]>([]);
   const [showFilters, setShowFilters] = React.useState(false);
-  const [groupBy, setGroupBy] = React.useState<'none' | 'date' | 'category' | 'type'>('none');
+  const [groupBy, setGroupBy] = React.useState<'none' | 'date' | 'category' | 'type'>('date');
 
   const searchResults = useSearch(content, filter.searchQuery);
 
@@ -490,11 +490,12 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-3 mb-6"
+                    className="sticky top-0 z-20 flex items-center gap-3 mb-6 -mx-2 px-2 py-2 backdrop-blur-xl bg-white/70 dark:bg-gray-950/70 rounded-xl"
                   >
-                    <h2 className="text-xl font-bold text-primary">{groupName}</h2>
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <h2 className="text-lg font-bold text-primary">{groupName}</h2>
                     <div className={`flex-1 h-px bg-gradient-to-r ${settings.theme === 'dark' ? 'from-white/20' : 'from-black/20'} to-transparent`} />
-                    <span className="text-secondary text-sm">{groupItems.length} items</span>
+                    <span className="text-secondary text-sm tabular-nums">{groupItems.length} item{groupItems.length !== 1 ? 's' : ''}</span>
                   </motion.div>
                 )}
 
