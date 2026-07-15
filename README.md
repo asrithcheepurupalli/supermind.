@@ -1,5 +1,7 @@
 # supermind
 
+Live at [supermind.ink](https://supermind.ink).
+
 A second brain that lives on your device. You write notes, paste links, and drop files into it. It tags them, files them, and finds them again when you search. There is no account, no server, and no tracking. If you open the network tab, nothing is talking to anyone.
 
 ## Why local-first
