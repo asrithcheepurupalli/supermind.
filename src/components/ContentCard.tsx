@@ -11,7 +11,6 @@ import {
   Star,
   ExternalLink,
   Calendar,
-  Tag,
   MoreHorizontal,
   Share,
   Copy,
@@ -19,8 +18,6 @@ import {
   Edit,
   Eye,
   Download,
-  Brain,
-  Layers,
   X,
   Camera,
 } from 'lucide-react';
@@ -64,6 +61,26 @@ const isRedundantSummary = (summary: string, contentText: string) => {
   return !a || b.includes(a) || a.includes(b);
 };
 
+// Deterministic hue per item — gives every card its own color aura.
+const hashHue = (id: string) => {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 360;
+  return h;
+};
+
+// Split content into a display title (first sentence/line) and body preview.
+const splitContent = (text: string): [string, string] => {
+  const trimmed = text.trim();
+  const firstLine = trimmed.split('\n')[0];
+  const sentence = firstLine.match(/^.{10,90}?[.!?:](\s|$)/);
+  if (sentence) {
+    const title = sentence[0].replace(/[.!?:]\s*$/, '').trim();
+    return [title, trimmed.slice(sentence[0].length).trim()];
+  }
+  if (firstLine.length <= 90) return [firstLine, trimmed.slice(firstLine.length).trim()];
+  return [`${firstLine.slice(0, 80).trimEnd()}…`, trimmed];
+};
+
 export default function ContentCard({
   content,
   onToggleFavorite,
@@ -80,6 +97,8 @@ export default function ContentCard({
   const [editTags, setEditTags] = React.useState(content.tags.join(', '));
   const IconComponent = contentTypeIcons[content.contentType];
   const gradientClasses = contentTypeGradients[content.contentType];
+  const hue = hashHue(content.id);
+  const [displayTitle, displayBody] = splitContent(content.contentText);
 
   const formatTimeAgo = (date: Date) => {
     if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
@@ -157,12 +176,6 @@ export default function ContentCard({
     }
   };
 
-  const getReadingTime = () => {
-    const wordsPerMinute = 200;
-    const wordCount = content.contentText.split(' ').length;
-    return Math.ceil(wordCount / wordsPerMinute);
-  };
-
   // Guides render as interactive onboarding cards.
   if (content.metadata?.isGuide) {
     return (
@@ -191,6 +204,18 @@ export default function ContentCard({
 
   const cardContent = (
     <>
+      {/* Color aura — unique per item, intensifies on hover */}
+      <div aria-hidden className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+        <div
+          className="absolute -top-14 -right-14 w-44 h-44 rounded-full blur-3xl opacity-[0.22] dark:opacity-[0.18] group-hover:opacity-40 transition-opacity duration-500"
+          style={{ background: `radial-gradient(circle, hsl(${hue} 85% 60%), transparent 70%)` }}
+        />
+        <div
+          className="absolute -bottom-16 -left-16 w-36 h-36 rounded-full blur-3xl opacity-0 group-hover:opacity-20 transition-opacity duration-500"
+          style={{ background: `radial-gradient(circle, hsl(${(hue + 60) % 360} 85% 60%), transparent 70%)` }}
+        />
+      </div>
+
       {/* Selection Overlay */}
       <AnimatePresence>
         {isSelected && (
@@ -231,53 +256,38 @@ export default function ContentCard({
         </motion.div>
       )}
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-4 relative z-10">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className={`p-3 rounded-xl border ${gradientClasses} backdrop-blur-sm flex-shrink-0`}>
-            <IconComponent size={20} />
+      {/* Header: compact type chip + time; actions reveal on hover */}
+      <div className="flex items-center justify-between mb-3.5 relative z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`p-2 rounded-lg border ${gradientClasses} backdrop-blur-sm flex-shrink-0`}>
+            <IconComponent size={14} />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="text-primary font-semibold text-sm lg:text-base truncate">
-              {content.sourceApp}
-            </div>
-            <div className="text-secondary text-xs lg:text-sm flex items-center gap-2">
-              <Clock size={12} />
-              <span>{formatTimeAgo(content.timestamp)}</span>
-              {content.contentType === 'text' && content.contentText.split(' ').length > 60 && (
-                <>
-                  <span>•</span>
-                  <span>{getReadingTime()} min read</span>
-                </>
-              )}
-            </div>
-          </div>
+          <span className="text-muted text-[11px] font-semibold uppercase tracking-widest truncate">
+            {content.sourceApp}
+          </span>
+          <span className="text-muted/60 text-[11px] flex-shrink-0">·</span>
+          <span className="text-muted text-[11px] flex-shrink-0 flex items-center gap-1">
+            <Clock size={10} />
+            {formatTimeAgo(content.timestamp)}
+          </span>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* AI Confidence Badge */}
-          {content.aiGenerated?.confidence !== undefined && (
-            <div className="flex items-center gap-1 px-2 py-1 glass-button rounded-full text-xs">
-              <Brain size={10} className="text-purple-400" />
-              <span className="text-purple-500">{content.aiGenerated.confidence}%</span>
-            </div>
-          )}
-
-          {/* Favorite Button */}
+        <div className="flex items-center gap-1">
+          {/* Favorite: always visible when starred, hover-revealed otherwise */}
           <motion.button
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.15 }}
             whileTap={{ scale: 0.9 }}
             onClick={(e) => {
               e.stopPropagation();
               onToggleFavorite(content.id);
             }}
-            className={`p-2 rounded-lg transition-all duration-200 ${
+            className={`p-1.5 rounded-lg transition-all duration-200 ${
               content.isFavorite
-                ? 'text-yellow-500 bg-black/10 dark:bg-white/10'
-                : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
+                ? 'text-yellow-500'
+                : 'text-secondary opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-yellow-500'
             }`}
           >
-            <Star size={16} fill={content.isFavorite ? 'currentColor' : 'none'} />
+            <Star size={15} fill={content.isFavorite ? 'currentColor' : 'none'} />
           </motion.button>
 
           {/* Actions Menu */}
@@ -289,9 +299,9 @@ export default function ContentCard({
                 e.stopPropagation();
                 setShowActions(!showActions);
               }}
-              className="p-2 rounded-lg text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200"
+              className="p-1.5 rounded-lg text-secondary opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 transition-all duration-200"
             >
-              <MoreHorizontal size={16} />
+              <MoreHorizontal size={15} />
             </motion.button>
 
             <AnimatePresence>
@@ -368,61 +378,65 @@ export default function ContentCard({
         </div>
       )}
 
-      {/* Text Content */}
-      <div className="mb-4">
-        <p className={`text-primary leading-relaxed mb-3 text-sm lg:text-base break-words ${
-          viewMode === 'list' ? 'line-clamp-2' : 'line-clamp-3'
+      {/* Title + body: real typographic hierarchy instead of a text dump */}
+      <div className="mb-4 relative z-10">
+        <h3 className={`text-primary font-semibold text-[15px] lg:text-[17px] leading-snug tracking-tight break-words mb-1.5 ${
+          viewMode === 'list' ? 'line-clamp-1' : 'line-clamp-2'
         }`}>
-          {content.contentText}
-        </p>
-        {content.summary && !isRedundantSummary(content.summary, content.contentText) && (
-          <p className={`text-secondary text-xs lg:text-sm leading-relaxed ${
+          {displayTitle}
+        </h3>
+        {displayBody && (
+          <p className={`text-secondary/90 text-[13px] leading-relaxed break-words ${
             viewMode === 'list' ? 'line-clamp-1' : 'line-clamp-2'
           }`}>
+            {displayBody}
+          </p>
+        )}
+        {!displayBody && content.summary && !isRedundantSummary(content.summary, content.contentText) && (
+          <p className="text-secondary/90 text-[13px] leading-relaxed line-clamp-2">
             {content.summary}
           </p>
         )}
       </div>
 
-      {/* Tags */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {content.tags.slice(0, viewMode === 'list' ? 3 : 5).map((tag) => (
-          <button
-            key={tag}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTagClick(tag);
-            }}
-            className="inline-flex items-center gap-1 px-3 py-1 glass-button rounded-full text-xs hover:border-emerald-500/30 transition-all duration-200 cursor-pointer"
-            title={`Filter by "${tag}"`}
-          >
-            <Tag size={10} />
-            {tag}
-          </button>
-        ))}
-        {content.tags.length > (viewMode === 'list' ? 3 : 5) && (
-          <span className="text-muted text-xs px-2 py-1 glass-button rounded-full">
-            +{content.tags.length - (viewMode === 'list' ? 3 : 5)} more
-          </span>
-        )}
-      </div>
+      {/* Tags: quiet hash-chips, capped at three */}
+      {content.tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-4 relative z-10">
+          {content.tags.slice(0, 3).map((tag) => (
+            <button
+              key={tag}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTagClick(tag);
+              }}
+              className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-black/[0.04] dark:bg-white/[0.06] text-secondary hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+              title={`Filter by "${tag}"`}
+            >
+              #{tag}
+            </button>
+          ))}
+          {content.tags.length > 3 && (
+            <span className="text-muted text-[11px]">+{content.tags.length - 3}</span>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between relative z-10">
+        <div className="flex items-center gap-3">
+          <div className="text-muted text-[11px] capitalize flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: `hsl(${hue} 70% 55%)` }} />
+            {content.category}
+          </div>
           {content.reminderDate && (
             <div
-              className="flex items-center gap-1 text-emerald-500 text-xs lg:text-sm glass-button px-2 py-1 rounded-full"
+              className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium"
               title={content.reminderDate.toLocaleString?.() ?? ''}
             >
-              <Calendar size={12} />
+              <Calendar size={11} />
               <span>Reminder</span>
             </div>
           )}
-          <div className="text-muted text-xs lg:text-sm capitalize flex items-center gap-1">
-            <Layers size={12} />
-            {content.category}
-          </div>
         </div>
 
         {content.contentType === 'link' && (

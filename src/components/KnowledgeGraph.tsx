@@ -225,68 +225,157 @@ export default function KnowledgeGraph() {
       setHoveredTag(hovered >= 0 ? nodes[hovered].tag : null);
       canvas.style.cursor = hovered >= 0 ? 'pointer' : 'default';
 
-      // Draw
+      // ---- Draw ----
       ctx.clearRect(0, 0, width, height);
 
-      const inkAlpha = isDark ? 0.16 : 0.1;
-      for (const e of edges) {
+      // Depth field: faint dot grid + radial vignette glow behind the cluster.
+      const gridInk = isDark ? 'rgba(255,255,255,0.045)' : 'rgba(0,0,0,0.05)';
+      ctx.fillStyle = gridInk;
+      for (let gx = 14; gx < width; gx += 26) {
+        for (let gy = 14; gy < height; gy += 26) {
+          ctx.fillRect(gx, gy, 1.2, 1.2);
+        }
+      }
+      const vignette = ctx.createRadialGradient(width / 2, height / 2, 60, width / 2, height / 2, Math.max(width, height) * 0.6);
+      vignette.addColorStop(0, isDark ? 'rgba(16,185,129,0.05)' : 'rgba(16,185,129,0.04)');
+      vignette.addColorStop(1, 'rgba(16,185,129,0)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, width, height);
+
+      // Curved gradient edges with energy particles flowing along them.
+      const quadPoint = (ax: number, ay: number, cx: number, cy: number, bx: number, by: number, t: number) => {
+        const u = 1 - t;
+        return {
+          x: u * u * ax + 2 * u * t * cx + t * t * bx,
+          y: u * u * ay + 2 * u * t * cy + t * t * by,
+        };
+      };
+
+      for (let ei = 0; ei < edges.length; ei++) {
+        const e = edges[ei];
         const a = nodes[e.a];
         const b = nodes[e.b];
         const connectedToHover = hovered >= 0 && (e.a === hovered || e.b === hovered);
-        ctx.strokeStyle = connectedToHover
-          ? `hsla(160, 84%, ${isDark ? 45 : 32}%, 0.65)`
-          : `hsla(0, 0%, ${isDark ? 100 : 0}%, ${inkAlpha})`;
-        ctx.lineWidth = connectedToHover ? 1.8 : Math.min(2, 0.6 + e.weight * 0.3);
+        const dimmedEdge = hovered >= 0 && !connectedToHover;
+
+        // Curve control point: perpendicular offset that sways with time.
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const sway = Math.sin(time * 0.9 + ei) * 0.06;
+        const cx = mx - dy * (0.14 + sway);
+        const cy = my + dx * (0.14 + sway);
+
+        const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+        const edgeAlpha = dimmedEdge ? 0.04 : connectedToHover ? 0.75 : Math.min(0.34, 0.1 + e.weight * 0.07);
+        grad.addColorStop(0, `hsla(${a.hue}, 80%, ${isDark ? 62 : 45}%, ${edgeAlpha})`);
+        grad.addColorStop(1, `hsla(${b.hue}, 80%, ${isDark ? 62 : 45}%, ${edgeAlpha})`);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = connectedToHover ? 2 : Math.min(1.8, 0.7 + e.weight * 0.3);
         ctx.beginPath();
         ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
+        ctx.quadraticCurveTo(cx, cy, b.x, b.y);
         ctx.stroke();
+
+        // Energy particles: one per strong edge, two when hovered.
+        if (!dimmedEdge && (e.weight >= 2 || connectedToHover)) {
+          const particleCount = connectedToHover ? 2 : 1;
+          const speed = connectedToHover ? 0.35 : 0.12;
+          for (let pi = 0; pi < particleCount; pi++) {
+            const t = ((time * speed + ei * 0.37 + pi * 0.5) % 1);
+            const pt = quadPoint(a.x, a.y, cx, cy, b.x, b.y, t);
+            const pr = connectedToHover ? 2.6 : 1.8;
+            const pglow = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, pr * 4);
+            pglow.addColorStop(0, `hsla(160, 90%, ${isDark ? 70 : 45}%, 0.9)`);
+            pglow.addColorStop(1, 'hsla(160, 90%, 60%, 0)');
+            ctx.fillStyle = pglow;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, pr * 4, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
 
+      // Nodes: shaded orbs with bloom, specular highlight, and rim.
       for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
         const isHovered = i === hovered;
         const isNeighbor = hovered >= 0 && neighbors.get(hovered)?.has(i);
         const dimmed = hovered >= 0 && !isHovered && !isNeighbor;
         const breathe = 1 + Math.sin(time * 2 + n.phase) * 0.05;
-        const r = n.radius * (isHovered ? 1.25 : breathe);
+        const r = n.radius * (isHovered ? 1.28 : breathe);
 
-        const light = isDark ? 60 : 42;
-        const alpha = dimmed ? 0.25 : 1;
+        const light = isDark ? 58 : 46;
+        const alpha = dimmed ? 0.18 : 1;
 
-        // soft glow
-        const glow = ctx.createRadialGradient(n.x, n.y, r * 0.3, n.x, n.y, r * 2.2);
-        glow.addColorStop(0, `hsla(${n.hue}, 70%, ${light}%, ${0.28 * alpha})`);
-        glow.addColorStop(1, `hsla(${n.hue}, 70%, ${light}%, 0)`);
+        // outer bloom
+        const glow = ctx.createRadialGradient(n.x, n.y, r * 0.4, n.x, n.y, r * (isHovered ? 3 : 2.3));
+        glow.addColorStop(0, `hsla(${n.hue}, 78%, ${light}%, ${(isHovered ? 0.4 : 0.24) * alpha})`);
+        glow.addColorStop(1, `hsla(${n.hue}, 78%, ${light}%, 0)`);
         ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r * 2.2, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, r * (isHovered ? 3 : 2.3), 0, Math.PI * 2);
         ctx.fill();
 
-        // core
-        ctx.fillStyle = `hsla(${n.hue}, 72%, ${light}%, ${alpha})`;
+        // orb core: off-center gradient reads as a lit sphere
+        const core = ctx.createRadialGradient(n.x - r * 0.35, n.y - r * 0.42, r * 0.12, n.x, n.y, r);
+        core.addColorStop(0, `hsla(${n.hue}, 82%, ${light + 22}%, ${alpha})`);
+        core.addColorStop(0.55, `hsla(${n.hue}, 74%, ${light}%, ${alpha})`);
+        core.addColorStop(1, `hsla(${n.hue}, 80%, ${Math.max(20, light - 20)}%, ${alpha})`);
+        ctx.fillStyle = core;
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        // specular glint
+        ctx.fillStyle = `rgba(255,255,255,${0.5 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(n.x - r * 0.34, n.y - r * 0.4, Math.max(1.2, r * 0.16), 0, Math.PI * 2);
         ctx.fill();
 
         // surface ring separates overlapping marks
         ctx.strokeStyle = isDark ? 'rgba(3, 7, 18, 0.9)' : 'rgba(255, 255, 255, 0.95)';
         ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
         ctx.stroke();
 
-        // labels: always for large nodes, on hover/neighbor for the rest — text in ink, not series color
+        // hover halo: slowly rotating dashed orbit
+        if (isHovered) {
+          ctx.save();
+          ctx.translate(n.x, n.y);
+          ctx.rotate(time * 1.8);
+          ctx.setLineDash([4, 7]);
+          ctx.strokeStyle = `hsla(${n.hue}, 85%, ${isDark ? 70 : 45}%, 0.8)`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(0, 0, r + 7, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // labels in ink with a soft pill backdrop, never in series color
         const showLabel = isHovered || isNeighbor || n.radius > 10;
         if (showLabel && !dimmed) {
-          ctx.font = `${isHovered ? 600 : 500} ${isHovered ? 13 : 11.5}px 'Inter Variable', -apple-system, sans-serif`;
+          const fontSize = isHovered ? 13 : 11.5;
+          ctx.font = `${isHovered ? 600 : 500} ${fontSize}px 'Inter Variable', -apple-system, sans-serif`;
           ctx.textAlign = 'center';
+          const tw = ctx.measureText(n.tag).width;
+          const pad = 7;
+          const ly = n.y - r - (isHovered ? 13 : 11);
+          ctx.fillStyle = isDark ? 'rgba(5, 8, 14, 0.75)' : 'rgba(255, 255, 255, 0.85)';
+          ctx.beginPath();
+          ctx.roundRect(n.x - tw / 2 - pad, ly - fontSize + 1, tw + pad * 2, fontSize + 9, 8);
+          ctx.fill();
           ctx.fillStyle = isDark
-            ? `rgba(243, 244, 246, ${isHovered ? 1 : 0.85})`
-            : `rgba(17, 24, 39, ${isHovered ? 1 : 0.8})`;
-          ctx.fillText(n.tag, n.x, n.y - r - 7);
+            ? `rgba(243, 244, 246, ${isHovered ? 1 : 0.9})`
+            : `rgba(17, 24, 39, ${isHovered ? 1 : 0.85})`;
+          ctx.fillText(n.tag, n.x, ly + 4);
           if (isHovered) {
             ctx.font = `400 10.5px 'Inter Variable', -apple-system, sans-serif`;
-            ctx.fillStyle = isDark ? 'rgba(156, 163, 175, 0.9)' : 'rgba(107, 114, 128, 0.9)';
-            ctx.fillText(`${n.count} item${n.count !== 1 ? 's' : ''} · click to explore`, n.x, n.y + r + 16);
+            ctx.fillStyle = isDark ? 'rgba(156, 163, 175, 0.95)' : 'rgba(107, 114, 128, 0.95)';
+            ctx.fillText(`${n.count} item${n.count !== 1 ? 's' : ''} · click to explore`, n.x, n.y + r + 18);
           }
         }
       }
