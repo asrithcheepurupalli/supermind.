@@ -245,13 +245,17 @@ export const useStore = create<AppState>()(
           ? clientSideAI.generateTags(newContent.contentText, newContent.contentType)
           : [];
 
+        // A summary only earns its place on longer content — for short notes it
+        // would just repeat the text.
+        const generatedSummary = settings.ai.smartSummaries && newContent.contentText.length > 200
+          ? clientSideAI.generateSummary(newContent.contentText, newContent.contentType)
+          : '';
+
         const enhancedContent: SavedContent = {
           ...newContent,
           userId: user.id,
           tags: [...new Set([...(newContent.tags || []), ...autoTags])].slice(0, 8),
-          summary: settings.ai.smartSummaries
-            ? clientSideAI.generateSummary(newContent.contentText, newContent.contentType)
-            : newContent.summary || '',
+          summary: generatedSummary || newContent.summary || '',
           category: clientSideAI.suggestCategory(newContent.contentText, newContent.tags || []),
           reminderDate: newContent.reminderDate || clientSideAI.suggestReminderDate(newContent.contentText),
           isEncrypted: encryptionManager.isUnlocked(),

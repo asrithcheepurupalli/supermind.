@@ -48,12 +48,20 @@ const contentTypeIcons = {
 };
 
 const contentTypeGradients = {
-  link: 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20',
-  image: 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20',
-  pdf: 'bg-gradient-to-br from-red-500/10 to-pink-500/10 border-red-500/20',
-  video: 'bg-gradient-to-br from-purple-500/10 to-violet-500/10 border-purple-500/20',
-  audio: 'bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border-orange-500/20',
-  text: 'bg-gradient-to-br from-gray-500/10 to-slate-500/10 border-gray-500/20',
+  link: 'bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20 text-blue-500',
+  image: 'bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/20 text-emerald-500',
+  pdf: 'bg-gradient-to-br from-red-500/10 to-pink-500/10 border-red-500/20 text-red-500',
+  video: 'bg-gradient-to-br from-purple-500/10 to-violet-500/10 border-purple-500/20 text-purple-500',
+  audio: 'bg-gradient-to-br from-orange-500/10 to-yellow-500/10 border-orange-500/20 text-orange-500',
+  text: 'bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-500/20 text-teal-600',
+};
+
+// A summary that merely repeats a short note adds noise, not signal.
+const isRedundantSummary = (summary: string, contentText: string) => {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const a = norm(summary);
+  const b = norm(contentText);
+  return !a || b.includes(a) || a.includes(b);
 };
 
 export default function ContentCard({
@@ -227,7 +235,7 @@ export default function ContentCard({
       <div className="flex items-start justify-between mb-4 relative z-10">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <div className={`p-3 rounded-xl border ${gradientClasses} backdrop-blur-sm flex-shrink-0`}>
-            <IconComponent size={20} className="text-primary" />
+            <IconComponent size={20} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-primary font-semibold text-sm lg:text-base truncate">
@@ -236,7 +244,7 @@ export default function ContentCard({
             <div className="text-secondary text-xs lg:text-sm flex items-center gap-2">
               <Clock size={12} />
               <span>{formatTimeAgo(content.timestamp)}</span>
-              {content.contentType === 'text' && (
+              {content.contentType === 'text' && content.contentText.split(' ').length > 60 && (
                 <>
                   <span>•</span>
                   <span>{getReadingTime()} min read</span>
@@ -367,7 +375,7 @@ export default function ContentCard({
         }`}>
           {content.contentText}
         </p>
-        {content.summary && (
+        {content.summary && !isRedundantSummary(content.summary, content.contentText) && (
           <p className={`text-secondary text-xs lg:text-sm leading-relaxed ${
             viewMode === 'list' ? 'line-clamp-1' : 'line-clamp-2'
           }`}>
@@ -548,9 +556,7 @@ export default function ContentCard({
       onHoverEnd={() => setIsHovered(false)}
       onClick={() => onSelect?.()}
       className={`
-        group relative glass-dark border border-white/10 rounded-2xl p-6
-        hover:border-white/20 transition-all duration-300 cursor-pointer
-        hover:shadow-2xl hover:shadow-black/20
+        group relative content-card rounded-2xl p-6 cursor-pointer
         ${isSelected ? 'ring-2 ring-emerald-500/50' : ''}
         ${viewMode === 'list' ? 'flex gap-6 items-start' : ''}
       `}
