@@ -17,7 +17,7 @@ createRoot(document.getElementById('root')!).render(
 // Offline support + PWA installability. Production only, so dev reloads stay instant.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {
       // Offline support is progressive enhancement — never block the app on it.
     });
   });

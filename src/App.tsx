@@ -94,7 +94,7 @@ function App() {
   }, [content, remindersEnabled]);
 
   React.useEffect(() => {
-    if (window.location.pathname === '/about') {
+    if (window.location.hash === '#about') {
       setShowAbout(true);
       setShowLanding(false);
     }
