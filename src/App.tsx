@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
-  Brain, Shield, Star, Grid, Clock, TrendingUp, Sparkles, Database,
+  Brain, Shield, Grid, Clock, TrendingUp, Sparkles,
   Network, Lightbulb, Download, ChevronRight, Tag as TagIcon, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -198,20 +198,7 @@ function App() {
   ];
 
   return (
-    <div className={`flex h-screen overflow-hidden ${isDark ? 'dark bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'}`}>
-      {/* Ambient Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-40 -right-40 w-96 h-96 rounded-full blur-3xl ${
-          isDark
-            ? 'bg-gradient-to-br from-emerald-500/5 via-blue-500/5 to-purple-500/5'
-            : 'bg-gradient-to-br from-emerald-500/3 via-blue-500/3 to-purple-500/3'
-        }`} />
-        <div className={`absolute top-40 -left-40 w-96 h-96 rounded-full blur-3xl ${
-          isDark
-            ? 'bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-orange-500/5'
-            : 'bg-gradient-to-br from-purple-500/3 via-pink-500/3 to-orange-500/3'
-        }`} />
-      </div>
+    <div className="flex h-screen overflow-hidden bg-paper text-ink noise">
 
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
@@ -221,7 +208,7 @@ function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`fixed inset-0 backdrop-blur-sm z-40 lg:hidden ${isDark ? 'bg-black/60' : 'bg-white/60'}`}
+              className="fixed inset-0 backdrop-blur-sm z-40 lg:hidden bg-black/30"
               onClick={() => setIsMobileSidebarOpen(false)}
             />
             <motion.div
@@ -260,7 +247,7 @@ function App() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-header p-4 lg:p-6 relative z-10"
+          className="bg-paper border-b-[1.5px] border-ink px-4 lg:px-6 py-3.5 relative z-10"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -269,7 +256,7 @@ function App() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-2 rounded-xl glass-button text-secondary hover:text-primary transition-all duration-200"
+                className="lg:hidden btn-paper haptic p-2 rounded-sm"
               >
                 <Menu size={20} />
               </motion.button>
@@ -280,7 +267,7 @@ function App() {
                   animate={{ width: searchFocused ? 400 : 300 }}
                   className="relative"
                 >
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 text-ink-faint" size={16} />
                   <input
                     type="text"
                     placeholder="Search everything..."
@@ -288,23 +275,22 @@ function App() {
                     onChange={(e) => setFilter({ ...filter, searchQuery: e.target.value })}
                     onFocus={() => setSearchFocused(true)}
                     onBlur={() => setSearchFocused(false)}
-                    className="w-full pl-12 pr-16 py-3 glass-input rounded-xl text-primary placeholder-muted transition-all duration-200"
+                    className="bare-input w-full pl-10 pr-16 py-2.5 bg-paper-raised border-[1.5px] border-ink rounded-sm text-ink placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--accent)] transition-colors"
                   />
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                  <div className="absolute right-2.5 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
                     <button
                       onClick={() => { hapticTap(); setCommandPaletteOpen(true); }}
                       title="Open command palette"
-                      className={`hidden sm:flex items-center gap-1 text-muted hover:text-primary text-xs px-2 py-1 rounded-md transition-colors ${isDark ? 'bg-gray-800/50' : 'bg-gray-200/50'}`}
+                      className="keycap keycap-press hidden sm:inline-flex text-[10px] !py-0.5 !px-1.5"
                     >
-                      <Command size={10} />
-                      <span>K</span>
+                      <Command size={9} />K
                     </button>
                     {filter.searchQuery && (
                       <motion.button
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         onClick={() => setFilter({ ...filter, searchQuery: '' })}
-                        className="text-muted hover:text-primary"
+                        className="text-ink-faint hover:text-ink"
                       >
                         <X size={14} />
                       </motion.button>
@@ -314,24 +300,21 @@ function App() {
               </div>
 
               {/* View Switcher */}
-              <div className="hidden sm:flex items-center gap-1 glass-button rounded-xl p-1">
+              <div className="hidden sm:flex items-stretch border-[1.5px] border-ink rounded-sm overflow-hidden divide-x-[1.5px] divide-[var(--ink)]">
                 {viewSwitcher.map((view) => {
                   const IconComponent = view.icon;
+                  const active = activeView === view.id;
                   return (
-                    <motion.button
+                    <button
                       key={view.id}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setActiveView(view.id)}
-                      className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium ${
-                        activeView === view.id
-                          ? 'bg-black text-white dark:bg-white dark:text-black'
-                          : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
+                      onClick={() => { hapticTap(); setActiveView(view.id); }}
+                      className={`haptic px-4 py-2 flex items-center gap-2 font-label text-[10px] transition-colors ${
+                        active ? 'bg-ink text-paper' : 'bg-paper-raised text-ink-soft hover:text-ink hover:bg-[var(--accent-soft)]'
                       }`}
                     >
-                      <IconComponent size={16} />
+                      <IconComponent size={13} />
                       <span className="hidden lg:block">{view.label}</span>
-                    </motion.button>
+                    </button>
                   );
                 })}
               </div>
@@ -339,20 +322,12 @@ function App() {
 
             <div className="flex items-center gap-3">
               {/* Quick Stats */}
-              <div className="hidden lg:flex items-center gap-4 text-sm text-secondary">
-                <div className="flex items-center gap-2">
-                  <Database size={14} />
-                  <span>{content.length} items</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Star size={14} />
-                  <span>{content.filter(c => c.isFavorite).length}</span>
-                </div>
+              <div className="hidden lg:flex items-center gap-4 font-label text-[10px] text-ink-faint">
+                <span>{content.length} items</span>
+                <span>·</span>
+                <span>{content.filter(c => c.isFavorite).length} starred</span>
                 {settings.security.encryptionEnabled && (
-                  <div className="flex items-center gap-2">
-                    <Shield size={14} />
-                    <span>Encrypted</span>
-                  </div>
+                  <span className="stamp !py-0.5 !px-1.5 text-[9px] text-accent">sealed</span>
                 )}
               </div>
 
@@ -362,11 +337,11 @@ function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setNotificationsOpen(!notificationsOpen)}
-                  className="p-2 rounded-xl glass-button text-secondary hover:text-primary transition-all duration-200 relative"
+                  className="btn-paper haptic p-2 rounded-sm relative"
                 >
-                  <Bell size={18} />
+                  <Bell size={16} />
                   {notifications.length > 0 && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                    <div className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-accent border border-ink rounded-full" />
                   )}
                 </motion.button>
 
@@ -376,22 +351,21 @@ function App() {
                       initial={{ opacity: 0, scale: 0.95, y: -10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-80 glass-card rounded-2xl p-4 shadow-premium z-50"
+                      className="card-ink-static absolute right-0 top-full mt-3 w-80 rounded-sm p-5 z-50"
                     >
-                      <h3 className="text-primary font-semibold mb-3">Reminders</h3>
+                      <div className="font-label text-[10px] text-ink-faint mb-4">reminders</div>
                       {notifications.length === 0 ? (
-                        <p className="text-secondary text-sm py-4 text-center">
-                          No reminders. Add a note mentioning a deadline or follow-up and
-                          supermind will remind you here.
+                        <p className="font-display italic text-ink-soft py-3 text-center">
+                          Nothing due. Write a note with a deadline and it lands here.
                         </p>
                       ) : (
                         <div className="space-y-3">
                           {notifications.map((n) => (
-                            <div key={n.id} className="flex items-start gap-3 p-3 glass-button rounded-xl">
-                              <div className={`w-2 h-2 ${n.color} rounded-full mt-2 flex-shrink-0`} />
+                            <div key={n.id} className="flex items-start gap-3 pb-3 border-b border-[var(--ink-line)] last:border-0 last:pb-0">
+                              <div className="w-1.5 h-1.5 bg-accent rounded-full mt-2 flex-shrink-0" />
                               <div className="min-w-0">
-                                <p className="text-primary text-sm truncate">{n.text}</p>
-                                <p className="text-muted text-xs">{n.detail}</p>
+                                <p className="text-ink text-sm truncate">{n.text}</p>
+                                <p className="font-label text-[9px] text-ink-faint mt-0.5">{n.detail}</p>
                               </div>
                             </div>
                           ))}
@@ -408,9 +382,9 @@ function App() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setQuickActions(!quickActions)}
-                  className="p-2 rounded-xl glass-button text-secondary hover:text-primary transition-all duration-200"
+                  className="btn-paper haptic p-2 rounded-sm"
                 >
-                  <Zap size={18} />
+                  <Zap size={16} />
                 </motion.button>
 
                 <AnimatePresence>
@@ -419,9 +393,9 @@ function App() {
                       initial={{ opacity: 0, scale: 0.95, y: -10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      className="absolute right-0 top-full mt-2 w-64 glass-card rounded-2xl p-4 shadow-premium z-50"
+                      className="card-ink-static absolute right-0 top-full mt-3 w-64 rounded-sm p-4 z-50"
                     >
-                      <h3 className="text-primary font-semibold mb-3">Quick Actions</h3>
+                      <div className="font-label text-[10px] text-ink-faint mb-3">quick actions</div>
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { icon: Plus, label: 'Add Content', action: () => setUploadModalOpen(true) },
@@ -444,10 +418,10 @@ function App() {
                               action.action();
                               setQuickActions(false);
                             }}
-                            className="flex flex-col items-center gap-2 p-3 glass-button rounded-xl transition-all duration-200"
+                            className="haptic flex flex-col items-center gap-2 p-3 border-[1.5px] border-ink rounded-sm bg-paper hover:bg-[var(--accent-soft)] transition-colors"
                           >
-                            <action.icon size={18} className="text-emerald-400" />
-                            <span className="text-primary text-xs">{action.label}</span>
+                            <action.icon size={16} className="text-accent" />
+                            <span className="font-label text-[9px] text-ink">{action.label}</span>
                           </motion.button>
                         ))}
                       </div>
@@ -460,9 +434,7 @@ function App() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 onClick={() => setActiveView('profile')}
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow-lg ${
-                  isDark ? 'bg-white text-black' : 'bg-black text-white'
-                }`}
+                className="haptic w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center font-display text-lg border-[1.5px] border-ink"
               >
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </motion.button>
@@ -476,38 +448,38 @@ function App() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`flex flex-wrap gap-2 mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}
+className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
               >
                 {filter.category !== 'all' && (
-                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-emerald-600 text-sm border border-emerald-500/30">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 border-[1.5px] border-ink rounded-sm bg-[var(--accent-soft)] text-ink font-label text-[10px]">
                     Category: {filter.category}
-                    <button onClick={() => setFilter({ ...filter, category: 'all' })} className="hover:text-emerald-500">
+                    <button onClick={() => setFilter({ ...filter, category: 'all' })} className="hover:text-accent">
                       <X size={12} />
                     </button>
                   </span>
                 )}
                 {filter.contentType && (
-                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-blue-600 text-sm border border-blue-500/30">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 border-[1.5px] border-ink rounded-sm bg-[var(--accent-soft)] text-ink font-label text-[10px]">
                     Type: {filter.contentType}
-                    <button onClick={() => setFilter({ ...filter, contentType: '' })} className="hover:text-blue-500">
+                    <button onClick={() => setFilter({ ...filter, contentType: '' })} className="hover:text-accent">
                       <X size={12} />
                     </button>
                   </span>
                 )}
                 {filter.favoritesOnly && (
-                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-yellow-600 text-sm border border-yellow-500/30">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 border-[1.5px] border-ink rounded-sm bg-[var(--accent-soft)] text-ink font-label text-[10px]">
                     Favorites only
-                    <button onClick={() => setFilter({ ...filter, favoritesOnly: false })} className="hover:text-yellow-500">
+                    <button onClick={() => setFilter({ ...filter, favoritesOnly: false })} className="hover:text-accent">
                       <X size={12} />
                     </button>
                   </span>
                 )}
                 {filter.tags.map(tag => (
-                  <span key={tag} className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-purple-600 text-sm border border-purple-500/30">
+                  <span key={tag} className="inline-flex items-center gap-2 px-3 py-1 border-[1.5px] border-ink rounded-sm bg-[var(--accent-soft)] text-ink font-label text-[10px]">
                     Tag: {tag}
                     <button
                       onClick={() => setFilter({ ...filter, tags: filter.tags.filter(t => t !== tag) })}
-                      className="hover:text-purple-500"
+                      className="hover:text-accent"
                     >
                       <X size={12} />
                     </button>
@@ -824,7 +796,7 @@ function App() {
         >
           <motion.button
             onClick={() => { hapticTap(); setUploadModalOpen(true); }}
-            className="haptic relative w-16 h-16 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 text-white rounded-2xl shadow-premium transition-all duration-300 flex items-center justify-center"
+            className="btn-ink haptic relative w-14 h-14 rounded-sm flex items-center justify-center"
           >
             <Plus size={24} />
           </motion.button>
@@ -833,13 +805,7 @@ function App() {
 
       {/* Mobile Navigation */}
       <div className="sm:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
-        <div
-          className="flex items-center justify-center gap-4 py-3 px-6 rounded-full backdrop-blur-xl border shadow-2xl"
-          style={{
-            background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-          }}
-        >
+        <div className="card-ink-static flex items-center justify-center gap-4 py-2.5 px-6 rounded-sm">
           {([
             { id: 'home', icon: Grid, label: 'Home' },
             { id: 'timeline', icon: Clock, label: 'Timeline' },
@@ -849,12 +815,12 @@ function App() {
               whileHover={{ scale: 1.1, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveView(nav.id)}
-              className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${
-                activeView === nav.id ? 'text-primary' : 'text-secondary'
+              className={`haptic flex flex-col items-center gap-1 p-2 transition-colors ${
+                activeView === nav.id ? 'text-accent' : 'text-ink-soft'
               }`}
             >
-              <nav.icon size={22} strokeWidth={activeView === nav.id ? 2.5 : 2} />
-              <span className="text-xs font-medium">{nav.label}</span>
+              <nav.icon size={20} strokeWidth={activeView === nav.id ? 2.5 : 2} />
+              <span className="font-label text-[9px]">{nav.label}</span>
             </motion.button>
           ))}
 
@@ -862,9 +828,9 @@ function App() {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => { hapticTap(); setUploadModalOpen(true); }}
-            className="haptic w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-500 text-white border-4 border-white/40"
+            className="btn-ink haptic w-12 h-12 rounded-sm flex items-center justify-center"
           >
-            <Plus size={26} strokeWidth={3} />
+            <Plus size={24} strokeWidth={2.5} />
           </motion.button>
 
           {([
@@ -876,12 +842,12 @@ function App() {
               whileHover={{ scale: 1.1, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => setActiveView(nav.id)}
-              className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${
-                activeView === nav.id ? 'text-primary' : 'text-secondary'
+              className={`haptic flex flex-col items-center gap-1 p-2 transition-colors ${
+                activeView === nav.id ? 'text-accent' : 'text-ink-soft'
               }`}
             >
-              <nav.icon size={22} strokeWidth={activeView === nav.id ? 2.5 : 2} />
-              <span className="text-xs font-medium">{nav.label}</span>
+              <nav.icon size={20} strokeWidth={activeView === nav.id ? 2.5 : 2} />
+              <span className="font-label text-[9px]">{nav.label}</span>
             </motion.button>
           ))}
         </div>

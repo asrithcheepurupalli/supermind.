@@ -279,7 +279,7 @@ export default function CommandPalette() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[70] flex items-start justify-center pt-[16vh] px-4"
+          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[70] flex items-start justify-center pt-[15vh] px-4"
           onClick={close}
         >
           <motion.div
@@ -288,27 +288,27 @@ export default function CommandPalette() {
             exit={{ opacity: 0, scale: 0.97, y: -8 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-xl glass-card rounded-2xl shadow-premium overflow-hidden"
+            className="card-ink-static w-full max-w-xl rounded-sm overflow-hidden"
           >
             {/* Input */}
-            <div className="flex items-center gap-3 px-5 py-4 border-b border-black/5 dark:border-white/10">
-              <Search size={18} className="text-muted flex-shrink-0" />
+            <div className="flex items-center gap-3 px-5 py-4 border-b-[1.5px] border-ink">
+              <Search size={16} className="text-ink-faint flex-shrink-0" />
               <input
                 ref={inputRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search or type a command…  ( # for tags )"
-                className="flex-1 bg-transparent text-primary placeholder-muted outline-none text-base"
+                className="bare-input font-display italic flex-1 bg-transparent text-ink text-xl placeholder:text-[var(--ink-faint)] placeholder:not-italic outline-none caret-[var(--accent)]"
               />
-              <kbd className="hidden sm:block text-xs text-muted px-2 py-1 rounded-md bg-black/5 dark:bg-white/10">esc</kbd>
+              <kbd className="keycap hidden sm:inline-flex text-[9px] !py-0.5 !px-1.5">esc</kbd>
             </div>
 
             {/* Results */}
             <div ref={listRef} className="max-h-[46vh] overflow-y-auto custom-scrollbar py-2">
               {results.length === 0 ? (
-                <div className="px-5 py-10 text-center text-secondary text-sm">
-                  Nothing found for “{query}”
+                <div className="px-5 py-10 text-center font-display italic text-ink-faint">
+                  nothing found for “{query}”
                 </div>
               ) : (
                 results.map((row, index) => (
@@ -316,28 +316,24 @@ export default function CommandPalette() {
                     key={`${row.kind}-${row.id}`}
                     onClick={() => execute(row)}
                     onMouseMove={() => setSelected(index)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 mx-1 rounded-xl text-left transition-colors duration-75 ${
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 mx-1 rounded-sm text-left border-l-[3px] transition-colors duration-75 ${
                       index === selected
-                        ? 'bg-emerald-500/12 dark:bg-emerald-500/15'
-                        : ''
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                        : 'border-transparent'
                     }`}
                     style={{ width: 'calc(100% - 8px)' }}
                   >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      row.kind === 'content'
-                        ? 'bg-blue-500/10 text-blue-500'
-                        : row.kind === 'tag'
-                        ? 'bg-purple-500/10 text-purple-500'
-                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                    <div className={`w-7 h-7 border-[1.5px] rounded-sm flex items-center justify-center flex-shrink-0 ${
+                      index === selected ? 'border-ink bg-paper text-accent' : 'border-[var(--ink-line)] text-ink-faint'
                     }`}>
-                      <row.icon size={15} />
+                      <row.icon size={13} />
                     </div>
-                    <span className="flex-1 text-primary text-sm truncate">{row.label}</span>
+                    <span className="flex-1 text-ink text-sm truncate">{row.label}</span>
                     {row.hint && (
-                      <span className="text-xs text-muted capitalize flex-shrink-0">{row.hint}</span>
+                      <span className="font-label text-[9px] text-ink-faint flex-shrink-0">{row.hint}</span>
                     )}
                     {index === selected && (
-                      <CornerDownLeft size={14} className="text-muted flex-shrink-0" />
+                      <CornerDownLeft size={13} className="text-accent flex-shrink-0" />
                     )}
                   </button>
                 ))
@@ -345,10 +341,10 @@ export default function CommandPalette() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center gap-4 px-5 py-2.5 border-t border-black/5 dark:border-white/10 text-xs text-muted">
-              <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10">↑↓</kbd> navigate</span>
-              <span className="flex items-center gap-1.5"><kbd className="px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10">↵</kbd> select</span>
-              <span className="ml-auto">supermind.</span>
+            <div className="flex items-center gap-4 px-5 py-2.5 border-t-[1.5px] border-ink font-label text-[9px] text-ink-faint">
+              <span className="flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↑↓</kbd> navigate</span>
+              <span className="flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↵</kbd> select</span>
+              <span className="ml-auto flex items-baseline gap-0.5">supermind<span className="w-1 h-1 rounded-full bg-accent inline-block" /></span>
             </div>
           </motion.div>
         </motion.div>

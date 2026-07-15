@@ -2,86 +2,14 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
-  Flame,
-  Star,
-  Database,
-  CalendarDays,
-  Sparkles,
-  History,
   ArrowRight,
   Send,
-  Network,
-  Clock,
+  History,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useStore, defaultFilter } from '../store/useStore';
 import { SavedContent } from '../types';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
-import HeroGraph from './landing/HeroGraph';
-
-// Smooth 14-day activity sparkline rendered as an SVG area.
-function Sparkline({ items }: { items: SavedContent[] }) {
-  const points = React.useMemo(() => {
-    const counts: number[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      counts.push(items.filter(it => dayKey(it.timestamp) === dayKey(d)).length);
-    }
-    return counts;
-  }, [items]);
-
-  const max = Math.max(1, ...points);
-  const W = 240;
-  const H = 44;
-  const stepX = W / (points.length - 1);
-  const y = (v: number) => H - 4 - (v / max) * (H - 10);
-
-  let path = `M 0 ${y(points[0])}`;
-  for (let i = 1; i < points.length; i++) {
-    const x0 = (i - 1) * stepX;
-    const x1 = i * stepX;
-    const mid = (x0 + x1) / 2;
-    path += ` C ${mid} ${y(points[i - 1])}, ${mid} ${y(points[i])}, ${x1} ${y(points[i])}`;
-  }
-
-  if (points.every(p => p === 0)) return null;
-
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-11" preserveAspectRatio="none" aria-hidden>
-      <defs>
-        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${path} L ${W} ${H} L 0 ${H} Z`} fill="url(#sparkFill)" />
-      <path d={path} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-// Animated count-up for stat numbers.
-const useCountUp = (target: number, duration = 900) => {
-  const [value, setValue] = React.useState(0);
-  React.useEffect(() => {
-    if (target === 0) {
-      setValue(0);
-      return;
-    }
-    let frame = 0;
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(Math.round(eased * target));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target, duration]);
-  return value;
-};
 
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
@@ -89,7 +17,6 @@ const computeStreak = (items: SavedContent[]): number => {
   const days = new Set(items.map(i => dayKey(i.timestamp)));
   let streak = 0;
   const cursor = new Date();
-  // A streak survives until you miss a full day: if nothing today yet, start counting from yesterday.
   if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
   while (days.has(dayKey(cursor))) {
     streak++;
@@ -101,6 +28,7 @@ const computeStreak = (items: SavedContent[]): number => {
 interface MemoryLaneEntry {
   label: string;
   item: SavedContent;
+  rotate: string;
 }
 
 const buildMemoryLane = (items: SavedContent[]): MemoryLaneEntry[] => {
@@ -108,6 +36,7 @@ const buildMemoryLane = (items: SavedContent[]): MemoryLaneEntry[] => {
   const day = 24 * 3600 * 1000;
   const entries: MemoryLaneEntry[] = [];
   const used = new Set<string>();
+  const rotations = ['-rotate-1', 'rotate-1', '-rotate-[0.5deg]'];
 
   const pick = (minDays: number, maxDays: number, label: string) => {
     const found = items.find(i => {
@@ -116,61 +45,70 @@ const buildMemoryLane = (items: SavedContent[]): MemoryLaneEntry[] => {
     });
     if (found) {
       used.add(found.id);
-      entries.push({ label, item: found });
+      entries.push({ label, item: found, rotate: rotations[entries.length % rotations.length] });
     }
   };
 
-  pick(0.9, 2.5, 'Yesterday');
-  pick(6, 9, 'One week ago');
-  pick(27, 35, 'One month ago');
+  pick(0.9, 2.5, 'yesterday');
+  pick(6, 9, 'one week ago');
+  pick(27, 35, 'one month ago');
 
   if (entries.length === 0 && items.length > 0) {
     const oldest = items[items.length - 1];
     if (now - oldest.timestamp.getTime() > 2 * day) {
-      entries.push({ label: 'Where it began', item: oldest });
+      entries.push({ label: 'where it began', item: oldest, rotate: '-rotate-1' });
     }
   }
 
   return entries;
 };
 
-function StreakRing({ streak }: { streak: number }) {
-  // The ring fills across a 7-day rhythm; a full week glows.
-  const progress = Math.min(1, streak / 7);
-  const circumference = 2 * Math.PI * 34;
+// Streak drawn as ink tally marks — groups of five, the fifth struck through.
+function TallyMarks({ count }: { count: number }) {
+  const groups = Math.floor(count / 5);
+  const rest = count % 5;
+  const shown = Math.min(groups, 5);
+  const overflow = groups > 5;
+
+  const Group = ({ n, struck, gi }: { n: number; struck: boolean; gi: number }) => (
+    <svg width={n * 7 + (struck ? 6 : 2)} height="30" className="inline-block">
+      {[...Array(n)].map((_, i) => (
+        <motion.line
+          key={i}
+          x1={4 + i * 7} y1="4" x2={3 + i * 7} y2="26"
+          stroke="var(--ink)" strokeWidth="2.2" strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ delay: 0.15 + gi * 0.18 + i * 0.06, duration: 0.18 }}
+        />
+      ))}
+      {struck && (
+        <motion.line
+          x1="0" y1="22" x2={n * 7 + 4} y2="7"
+          stroke="var(--accent)" strokeWidth="2.4" strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ delay: 0.15 + gi * 0.18 + 0.3, duration: 0.22 }}
+        />
+      )}
+    </svg>
+  );
+
+  if (count === 0) {
+    return <span className="font-display italic text-ink-faint text-lg">no marks yet — today's the day</span>;
+  }
 
   return (
-    <div className="relative w-24 h-24 flex-shrink-0">
-      <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
-        <circle cx="40" cy="40" r="34" fill="none" strokeWidth="6" className="stroke-black/10 dark:stroke-white/10" />
-        <motion.circle
-          cx="40" cy="40" r="34" fill="none" strokeWidth="6" strokeLinecap="round"
-          stroke="url(#streakGradient)"
-          initial={{ strokeDashoffset: circumference }}
-          animate={{ strokeDashoffset: circumference * (1 - progress) }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          strokeDasharray={circumference}
-        />
-        <defs>
-          <linearGradient id="streakGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10b981" />
-            <stop offset="100%" stopColor="#3b82f6" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <Flame size={16} className={streak > 0 ? 'text-orange-500' : 'text-muted'} />
-        <span className="text-xl font-bold text-primary tabular-nums leading-tight">{streak}</span>
-        <span className="text-[10px] text-muted uppercase tracking-wide">day{streak !== 1 ? 's' : ''}</span>
-      </div>
-    </div>
+    <span className="flex items-end gap-2 flex-wrap">
+      {[...Array(shown)].map((_, gi) => <Group key={gi} n={5} struck gi={gi} />)}
+      {overflow && <span className="font-display text-ink text-xl">…</span>}
+      {rest > 0 && !overflow && <Group n={rest} struck={false} gi={shown} />}
+    </span>
   );
 }
 
 export default function Dashboard() {
-  const { user, content, addContent, setUploadModalOpen, setActiveView, setFilter, settings } = useStore();
-  const isDark = settings.theme === 'dark' ||
-    (settings.theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const { user, content, addContent, setUploadModalOpen, setActiveView, setFilter } = useStore();
   const [quickNote, setQuickNote] = React.useState('');
   const [isCapturing, setIsCapturing] = React.useState(false);
 
@@ -188,21 +126,7 @@ export default function Dashboard() {
   const streak = React.useMemo(() => computeStreak(items), [items]);
   const favorites = React.useMemo(() => items.filter(i => i.isFavorite).length, [items]);
   const memoryLane = React.useMemo(() => buildMemoryLane(items), [items]);
-  const recent = items.slice(0, 4);
-
-  // Top tags feed the live mini-graph teaser.
-  const topTags = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const item of items) {
-      for (const tag of item.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
-    }
-    const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t);
-    return tags.length >= 4 ? tags : undefined;
-  }, [items]);
-
-  const animatedTotal = useCountUp(items.length);
-  const animatedToday = useCountUp(todayCount);
-  const animatedFavorites = useCountUp(favorites);
+  const recent = items.slice(0, 5);
 
   const hour = new Date().getHours();
   const greeting = hour < 5 ? 'Up late' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -239,167 +163,174 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto p-6 lg:p-10 pb-32 sm:pb-16 space-y-6">
-      {/* Greeting + Streak */}
+    <div className="max-w-4xl mx-auto px-6 py-8 lg:py-12 pb-32 sm:pb-16">
+      {/* Today's page header */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glow-frame glass-card rounded-3xl p-6 lg:p-8"
+        className="flex items-end justify-between border-b-[1.5px] border-ink pb-6 mb-8"
       >
-        <div className="flex items-center justify-between gap-6">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-muted text-sm mb-1">
-              <CalendarDays size={14} />
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </div>
-            <h1 className="text-3xl lg:text-4xl font-bold text-primary tracking-tight mb-2">
-              {greeting}, {firstName}.
-            </h1>
-            <p className="text-secondary">
-              {todayCount === 0
-                ? 'Nothing captured yet today — your future self is waiting.'
-                : `${todayCount} capture${todayCount !== 1 ? 's' : ''} today. Keep the thread going.`}
-            </p>
+        <div>
+          <div className="font-label text-[10px] text-accent mb-3">
+            [ today's page · {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} ]
           </div>
-          <StreakRing streak={streak} />
+          <h1 className="font-display text-5xl lg:text-6xl tracking-tight leading-[1.02] text-ink">
+            {greeting}, <em className="marker">{firstName}.</em>
+          </h1>
+          <p className="font-display italic text-ink-soft text-lg mt-3">
+            {todayCount === 0
+              ? 'the page is blank — write something down.'
+              : `${todayCount} thought${todayCount !== 1 ? 's' : ''} captured today. keep going.`}
+          </p>
         </div>
-        <div className="mt-5 -mb-2">
-          <Sparkline items={items} />
+        <div className="hidden md:block text-right">
+          <div className="font-label text-[9px] text-ink-faint mb-2">capture streak</div>
+          <TallyMarks count={streak} />
+          <div className="font-label text-[9px] text-ink-faint mt-1.5">
+            {streak} day{streak !== 1 ? 's' : ''}
+          </div>
         </div>
       </motion.div>
 
-      {/* Quick Capture */}
+      {/* Quick capture: a ruled writing line */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06 }}
-        className="glass-card rounded-3xl p-2 flex items-end gap-2 focus-within:ring-2 focus-within:ring-emerald-500/40 transition-shadow"
+        className="mb-10"
       >
-        <textarea
-          value={quickNote}
-          onChange={(e) => setQuickNote(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              handleQuickCapture();
-            }
-          }}
-          rows={quickNote.includes('\n') ? 3 : 1}
-          placeholder="Capture a thought… it gets tagged and filed automatically  (⌘↵)"
-          className="flex-1 bg-transparent text-primary placeholder-muted outline-none resize-none px-4 py-3 text-base"
-        />
-        <button
-          onClick={handleQuickCapture}
-          disabled={!quickNote.trim() || isCapturing}
-          className="haptic m-1 w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-500 text-white flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0 shadow-lg shadow-emerald-500/20"
-        >
-          <Send size={17} />
-        </button>
+        <div className="flex items-end gap-3">
+          <div className="flex-1 relative">
+            <textarea
+              value={quickNote}
+              onChange={(e) => setQuickNote(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  handleQuickCapture();
+                }
+              }}
+              rows={quickNote.includes('\n') ? 3 : 1}
+              placeholder="Capture a thought — it files itself…"
+              className="bare-input font-display italic text-2xl w-full bg-transparent text-ink placeholder:text-[var(--ink-faint)] placeholder:not-italic outline-none resize-none border-b-2 border-ink focus:border-[var(--accent)] transition-colors pb-2 caret-[var(--accent)]"
+            />
+            <span className="absolute right-0 -bottom-5 font-label text-[8px] text-ink-faint">⌘↵ to file it</span>
+          </div>
+          <button
+            onClick={handleQuickCapture}
+            disabled={!quickNote.trim() || isCapturing}
+            className="btn-ink haptic w-11 h-11 rounded-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none flex-shrink-0"
+            aria-label="Capture"
+          >
+            <Send size={16} />
+          </button>
+        </div>
       </motion.div>
 
-      {/* Stats Row */}
+      {/* Ledger stats */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.12 }}
-        className="grid grid-cols-3 gap-4"
+        className="grid grid-cols-3 gap-4 mb-10"
       >
         {[
-          { label: 'Total items', value: animatedTotal, icon: Database, action: () => setActiveView('timeline') },
-          { label: 'Today', value: animatedToday, icon: Sparkles, action: () => setActiveView('timeline') },
+          { label: 'in the book', value: items.length, action: () => setActiveView('timeline') },
+          { label: 'today', value: todayCount, action: () => setActiveView('timeline') },
           {
-            label: 'Favorites', value: animatedFavorites, icon: Star,
+            label: 'starred', value: favorites,
             action: () => {
               setFilter({ ...defaultFilter, favoritesOnly: true });
               setActiveView('timeline');
             },
           },
-        ].map((stat) => (
+        ].map((stat, i) => (
           <button
             key={stat.label}
             onClick={() => { hapticTap(); stat.action(); }}
-            className="haptic glass-card rounded-2xl p-5 text-left hover:border-emerald-500/30 transition-colors"
+            className={`card-ink haptic rounded-sm p-4 text-left ${i === 1 ? 'rotate-[0.4deg]' : i === 2 ? '-rotate-[0.4deg]' : ''}`}
           >
-            <stat.icon size={16} className="text-emerald-600 dark:text-emerald-400 mb-3" />
-            <div className="text-2xl lg:text-3xl font-bold text-primary tabular-nums">{stat.value}</div>
-            <div className="text-secondary text-sm">{stat.label}</div>
+            <div className="font-display text-4xl lg:text-5xl text-ink tabular-nums leading-none mb-1.5">{stat.value}</div>
+            <div className="font-label text-[9px] text-ink-faint">{stat.label}</div>
           </button>
         ))}
       </motion.div>
 
-      {/* Memory Lane */}
+      {/* Memory lane: pinned cards */}
       {memoryLane.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18 }}
-          className="glass-card rounded-3xl p-6"
+          className="mb-10"
         >
           <div className="flex items-center gap-2 mb-4">
-            <History size={16} className="text-purple-500" />
-            <h2 className="text-lg font-semibold text-primary">Memory Lane</h2>
-            <span className="text-muted text-sm ml-1">what past-you saved</span>
+            <History size={13} className="text-accent" />
+            <span className="font-label text-[10px] text-ink-soft">memory lane</span>
+            <span className="font-display italic text-ink-faint text-sm">— what past-you wrote</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {memoryLane.map(({ label, item }) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {memoryLane.map(({ label, item, rotate }) => (
               <button
                 key={item.id}
                 onClick={() => openItem(item)}
-                className="haptic text-left p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] hover:bg-purple-500/[0.07] dark:hover:bg-purple-500/[0.12] border border-transparent hover:border-purple-500/20 transition-colors group"
+                className={`card-ink haptic rounded-sm p-4 text-left relative ${rotate}`}
               >
-                <div className="text-purple-600 dark:text-purple-400 text-xs font-semibold uppercase tracking-wide mb-2">
-                  {label}
-                </div>
-                <p className="text-primary text-sm line-clamp-2 mb-2">{item.contentText}</p>
-                <div className="flex items-center gap-2 text-muted text-xs">
-                  <Clock size={11} />
-                  {formatDistanceToNow(item.timestamp, { addSuffix: true })}
-                  <ArrowRight size={11} className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
+                <div
+                  aria-hidden
+                  className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-14 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)]"
+                  style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+                />
+                <div className="font-label text-[8px] text-accent mb-2">{label}</div>
+                <p className="font-display text-lg leading-snug text-ink line-clamp-3">
+                  {item.contentText}
+                </p>
               </button>
             ))}
           </div>
         </motion.div>
       )}
 
-      {/* Recent + Graph teaser */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      {/* Recent lines + graph corner */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.24 }}
-          className="glass-card rounded-3xl p-6 lg:col-span-3"
+          className="lg:col-span-3"
         >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-primary">Recent</h2>
+          <div className="flex items-baseline justify-between mb-3">
+            <span className="font-label text-[10px] text-ink-soft">recent entries</span>
             <button
               onClick={() => { hapticTap(); setActiveView('timeline'); }}
-              className="text-emerald-600 dark:text-emerald-400 text-sm font-medium hover:underline flex items-center gap-1"
+              className="font-label text-[9px] text-accent hover:underline flex items-center gap-1"
             >
-              View all <ArrowRight size={13} />
+              open the book <ArrowRight size={10} />
             </button>
           </div>
           {recent.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-secondary mb-4">Nothing here yet — add your first thought.</p>
+            <div className="border-[1.5px] border-dashed border-[var(--ink-line)] rounded-sm py-10 text-center">
+              <p className="font-display italic text-ink-faint mb-4">nothing written yet</p>
               <button
                 onClick={() => { hapticTap(); setUploadModalOpen(true); }}
-                className="haptic inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium shadow-lg shadow-emerald-500/20"
+                className="btn-ink haptic px-5 py-2.5 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
               >
-                <Plus size={16} /> Add Content
+                <Plus size={13} /> first entry
               </button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div>
               {recent.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => openItem(item)}
-                  className="haptic w-full text-left p-3 rounded-xl hover:bg-black/[0.03] dark:hover:bg-white/[0.05] transition-colors flex items-center gap-3 group"
+                  className="haptic w-full text-left flex items-baseline gap-3 py-2.5 border-b border-[var(--ink-line)] group hover:border-ink transition-colors"
                 >
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                  <span className="text-primary text-sm truncate flex-1">{item.contentText}</span>
-                  <span className="text-muted text-xs flex-shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0 translate-y-[-2px]" />
+                  <span className="font-display text-lg text-ink truncate flex-1 group-hover:italic">
+                    {item.contentText}
+                  </span>
+                  <span className="font-label text-[8px] text-ink-faint flex-shrink-0">
                     {formatDistanceToNow(item.timestamp, { addSuffix: true })}
                   </span>
                 </button>
@@ -409,23 +340,42 @@ export default function Dashboard() {
         </motion.div>
 
         <motion.button
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           onClick={() => { hapticTap(); setActiveView('graph'); }}
-          className="haptic glass-card rounded-3xl lg:col-span-2 text-left relative overflow-hidden group hover:border-emerald-500/30 transition-colors min-h-[260px]"
+          className="card-ink haptic rounded-sm p-5 lg:col-span-2 text-left rotate-[0.5deg] self-start"
         >
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/70 dark:to-black/50 z-[1]" />
-          <HeroGraph labels={topTags} surface={isDark ? 'dark' : 'light'} className="absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity" />
-          <div className="absolute bottom-0 inset-x-0 p-6 z-[2]">
-            <div className="flex items-center gap-2 mb-1">
-              <Network size={15} className="text-emerald-500 dark:text-emerald-400" />
-              <h2 className="text-lg font-semibold text-primary">Knowledge Graph</h2>
-            </div>
-            <span className="text-emerald-600 dark:text-emerald-400 text-sm font-medium inline-flex items-center gap-1">
-              Watch your ideas connect <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
-            </span>
-          </div>
+          <div className="font-label text-[9px] text-ink-faint mb-3">the map of your mind</div>
+          <svg viewBox="0 0 220 110" className="w-full mb-3">
+            {['M35 60 Q 75 25 115 45', 'M115 45 Q 155 65 185 35', 'M35 60 Q 90 90 150 80', 'M115 45 Q 130 65 150 80'].map((d, pi) => (
+              <motion.path
+                key={d} d={d} fill="none" stroke="var(--ink-line)" strokeWidth="1.1"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ delay: 0.5 + pi * 0.15, duration: 0.6 }}
+              />
+            ))}
+            {[
+              { x: 35, y: 60, r: 10 }, { x: 115, y: 45, r: 13 },
+              { x: 185, y: 35, r: 8 }, { x: 150, y: 80, r: 9 },
+            ].map((n, ni) => (
+              <motion.g
+                key={ni}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.55 + ni * 0.15, type: 'spring', stiffness: 260, damping: 13 }}
+                style={{ transformOrigin: `${n.x}px ${n.y}px` }}
+              >
+                <circle cx={n.x} cy={n.y} r={n.r} fill="var(--accent)" opacity="0.9" />
+                <circle cx={n.x} cy={n.y} r={n.r} fill="none" stroke="var(--ink)" strokeWidth="1.4" />
+              </motion.g>
+            ))}
+          </svg>
+          <div className="font-display text-xl text-ink mb-1">Knowledge Graph</div>
+          <span className="font-label text-[9px] text-accent flex items-center gap-1">
+            watch your ideas connect <ArrowRight size={10} />
+          </span>
         </motion.button>
       </div>
     </div>

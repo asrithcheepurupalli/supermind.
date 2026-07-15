@@ -16,15 +16,13 @@ import {
   Search,
   Settings,
   Star,
-  Command,
-  Shield,
   X,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
 import { Category, FilterState } from '../types';
 import { useStore } from '../store/useStore';
-import SecurityBadge from './SecurityBadge';
+import { hapticTap } from '../utils/haptics';
 
 interface SidebarProps {
   categories: Category[];
@@ -62,7 +60,6 @@ export default function Sidebar({
   const { user, content, setSettingsModalOpen, settings, getSecurityScore, logout } = useStore();
   const securityScore = getSecurityScore();
 
-  // Top tags derived from actual content.
   const topTags = React.useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of content) {
@@ -76,26 +73,6 @@ export default function Sidebar({
       .map(([tag]) => tag);
   }, [content]);
 
-  const handleCategorySelect = (categoryId: string) => {
-    onFilterChange({ ...filter, category: categoryId });
-  };
-
-  const handleContentTypeSelect = (contentType: string) => {
-    onFilterChange({
-      ...filter,
-      contentType: filter.contentType === contentType ? '' : contentType,
-    });
-  };
-
-  const handleTagToggle = (tag: string) => {
-    onFilterChange({
-      ...filter,
-      tags: filter.tags.includes(tag)
-        ? filter.tags.filter(t => t !== tag)
-        : [...filter.tags, tag],
-    });
-  };
-
   const handleLogout = () => {
     if (!window.confirm('Sign out? This clears your profile and all locally stored data on this device. Export a backup first if you want to keep your content.')) {
       return;
@@ -108,175 +85,158 @@ export default function Sidebar({
     <motion.div
       initial={{ x: -300 }}
       animate={{ x: 0 }}
-      className="w-80 h-screen glass-sidebar flex flex-col"
+      className="w-72 h-screen bg-paper border-r-[1.5px] border-ink flex flex-col"
     >
       {/* Header */}
-      <div className={`p-6 ${settings.theme === 'dark' ? 'border-b border-white/10' : 'border-b border-black/10'}`}>
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="logo-text">supermind.</h1>
-          <div className="flex items-center gap-2">
+      <div className="px-5 pt-5 pb-4 border-b border-[var(--ink-line)]">
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-2xl tracking-tight text-ink">supermind</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
+          </div>
+          <div className="flex items-center gap-1.5">
             {settings.security.encryptionEnabled && (
-              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600" title="Encryption enabled">
-                <Shield size={14} />
-              </div>
+              <span className="stamp !py-0.5 !px-1.5 text-[8px] text-accent" title="Encryption enabled">sealed</span>
             )}
             {isMobile ? (
-              <button
-                onClick={onClose}
-                className="p-2 rounded-lg glass-button text-secondary hover:text-primary transition-all duration-200"
-              >
-                <X size={18} />
+              <button onClick={onClose} className="btn-paper haptic p-1.5 rounded-sm" aria-label="Close">
+                <X size={15} />
               </button>
             ) : (
               <button
                 onClick={() => setSettingsModalOpen(true)}
-                className="p-2 rounded-lg glass-button text-secondary hover:text-primary transition-all duration-200"
+                className="btn-paper haptic p-1.5 rounded-sm"
+                aria-label="Settings"
               >
-                <Settings size={18} />
+                <Settings size={15} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Security Status */}
-        {settings.security.encryptionEnabled && (
-          <div className="mb-4">
-            <SecurityBadge variant="compact" />
-          </div>
-        )}
-
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted" size={18} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint" size={14} />
           <input
             type="text"
             placeholder="Search everything..."
             value={filter.searchQuery}
             onChange={(e) => onFilterChange({ ...filter, searchQuery: e.target.value })}
-            className="w-full pl-10 pr-4 py-3 glass-input rounded-xl text-primary placeholder-muted transition-all duration-200"
+            className="bare-input w-full pl-9 pr-3 py-2 bg-paper-raised border-[1.5px] border-ink rounded-sm text-sm text-ink placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--accent)] transition-colors"
           />
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 text-muted text-xs">
-            <Command size={12} />
-            <span>K</span>
-          </div>
         </div>
       </div>
 
-      {/* Scrollable Content */}
+      {/* Scrollable index */}
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Categories */}
-        <div className="p-6">
-          <h2 className="text-lg font-semibold text-primary mb-4">Library</h2>
-          <div className="space-y-2">
-            {categories.map((category, index) => {
+        <div className="px-5 py-5">
+          <div className="font-label text-[9px] text-ink-faint mb-3">index</div>
+          <div className="space-y-0.5">
+            {categories.map((category) => {
               const IconComponent = categoryIcons[category.icon] ?? FileText;
               const isActive = filter.category === category.id;
 
               return (
-                <motion.button
+                <button
                   key={category.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
                   onClick={() => {
-                    handleCategorySelect(category.id);
+                    hapticTap();
+                    onFilterChange({ ...filter, category: category.id });
                     if (isMobile) onClose?.();
                   }}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                  className={`haptic w-full flex items-center justify-between py-2 pl-3 pr-2 rounded-sm border-l-[3px] transition-colors ${
                     isActive
-                      ? 'bg-black text-white dark:bg-white dark:text-black'
-                      : 'text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-primary'
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                      : 'border-transparent hover:bg-[var(--accent-soft)]'
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <IconComponent size={18} />
-                    <span className="font-medium">{category.name}</span>
-                  </div>
-                  <span
-                    className={`text-sm px-2 py-1 rounded-full ${
-                      isActive
-                        ? settings.theme === 'dark' ? 'bg-white/30' : 'bg-black/30'
-                        : settings.theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
-                    }`}
-                  >
-                    {category.count}
+                  <span className="flex items-center gap-2.5 min-w-0">
+                    <IconComponent size={14} className={isActive ? 'text-accent' : 'text-ink-faint'} />
+                    <span className={`font-display text-lg leading-none truncate ${isActive ? 'text-ink' : 'text-ink-soft'}`}>
+                      {category.name}
+                    </span>
                   </span>
-                </motion.button>
+                  <span className="font-label text-[9px] text-ink-faint tabular-nums">{category.count}</span>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* Data Types */}
-        <div className="px-6 pb-6">
-          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Data Types</h3>
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(contentTypeIcons).map(([type, IconComponent], index) => {
+        {/* Data types */}
+        <div className="px-5 pb-5">
+          <div className="font-label text-[9px] text-ink-faint mb-3">by type</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {Object.entries(contentTypeIcons).map(([type, IconComponent]) => {
               const isActive = filter.contentType === type;
               return (
-                <motion.button
+                <button
                   key={type}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
                   onClick={() => {
-                    handleContentTypeSelect(type);
+                    hapticTap();
+                    onFilterChange({ ...filter, contentType: isActive ? '' : type });
                     if (isMobile) onClose?.();
                   }}
-                  className={`flex items-center gap-2 p-4 rounded-xl transition-all duration-200 touch-manipulation ${
+                  className={`haptic flex flex-col items-center gap-1 py-2 border-[1.5px] rounded-sm transition-colors ${
                     isActive
-                      ? 'bg-black text-white dark:bg-white dark:text-black'
-                      : 'text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-primary'
+                      ? 'border-ink bg-ink text-paper'
+                      : 'border-[var(--ink-line)] bg-paper-raised text-ink-soft hover:border-ink'
                   }`}
                 >
-                  <IconComponent size={16} />
-                  <span className="text-sm capitalize">{type}</span>
-                </motion.button>
+                  <IconComponent size={13} />
+                  <span className="font-label text-[8px]">{type}</span>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* Quick Filters */}
-        <div className="px-6 pb-6">
-          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Quick Filters</h3>
+        {/* Starred */}
+        <div className="px-5 pb-5">
           <button
             onClick={() => {
+              hapticTap();
               onFilterChange({ ...filter, favoritesOnly: !filter.favoritesOnly });
               if (isMobile) onClose?.();
             }}
-            className={`w-full flex items-center gap-2 p-3 text-sm rounded-xl transition-all duration-200 touch-manipulation ${
+            className={`haptic w-full flex items-center gap-2.5 py-2 px-3 border-[1.5px] rounded-sm transition-colors ${
               filter.favoritesOnly
-                ? 'bg-black text-white dark:bg-white dark:text-black'
-                : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
+                ? 'border-ink bg-[var(--highlight)]'
+                : 'border-[var(--ink-line)] bg-paper-raised hover:border-ink'
             }`}
           >
-            <Star size={14} fill={filter.favoritesOnly ? 'currentColor' : 'none'} />
-            Favorites Only
+            <Star size={13} className={filter.favoritesOnly ? 'text-ink' : 'text-ink-faint'} fill={filter.favoritesOnly ? 'currentColor' : 'none'} />
+            <span className="font-label text-[10px] text-ink">starred only</span>
           </button>
         </div>
 
         {/* Tags */}
-        <div className="px-6 pb-6">
-          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Top Tags</h3>
+        <div className="px-5 pb-5">
+          <div className="font-label text-[9px] text-ink-faint mb-3">top tags</div>
           {topTags.length === 0 ? (
-            <p className="text-muted text-sm">Tags appear here as you add content.</p>
+            <p className="font-display italic text-sm text-ink-faint">tags appear as you write…</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5">
               {topTags.map((tag) => {
                 const isActive = filter.tags.includes(tag);
                 return (
                   <button
                     key={tag}
-                    onClick={() => handleTagToggle(tag)}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full transition-all duration-200 touch-manipulation ${
+                    onClick={() => {
+                      hapticTap();
+                      onFilterChange({
+                        ...filter,
+                        tags: isActive ? filter.tags.filter(t => t !== tag) : [...filter.tags, tag],
+                      });
+                    }}
+                    className={`haptic font-label text-[9px] px-2 py-1 rounded-sm border transition-colors ${
                       isActive
-                        ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/40'
-                        : 'text-secondary hover:text-primary glass-button'
+                        ? 'border-[var(--accent)] bg-[var(--accent-soft)] text-accent'
+                        : 'border-[var(--ink-line)] text-ink-soft hover:border-ink hover:text-ink'
                     }`}
                   >
-                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-                    {tag}
+                    #{tag}
                   </button>
                 );
               })}
@@ -286,88 +246,55 @@ export default function Sidebar({
       </div>
 
       {/* Footer */}
-      <div className="p-6 border-t border-gray-800/50">
-        {/* Security Score */}
+      <div className="px-5 py-4 border-t-[1.5px] border-ink">
         {settings.security.encryptionEnabled && !isMobile && (
-          <div className="mb-4 p-3 glass-button rounded-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-secondary text-sm">Security Score</span>
-              <span className="text-emerald-600 font-semibold">{securityScore}%</span>
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-label text-[9px] text-ink-faint">security</span>
+              <span className="font-label text-[9px] text-accent tabular-nums">{securityScore}%</span>
             </div>
-            <div className={`w-full rounded-full h-2 ${settings.theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}>
+            <div className="w-full h-[5px] border border-ink rounded-full overflow-hidden bg-paper-raised">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${securityScore}%` }}
-                transition={{ duration: 1, delay: 0.5 }}
-                className={`h-2 rounded-full ${settings.theme === 'dark' ? 'bg-white' : 'bg-black'}`}
+                transition={{ duration: 0.8, delay: 0.3 }}
+                className="h-full bg-accent"
               />
             </div>
           </div>
         )}
 
-        {/* Mobile Settings Button */}
         {isMobile && (
           <button
             onClick={() => {
               setSettingsModalOpen(true);
               onClose?.();
             }}
-            className="w-full flex items-center gap-3 p-4 glass-button rounded-xl transition-all duration-200 mb-4 touch-manipulation"
+            className="btn-paper haptic w-full flex items-center justify-center gap-2 py-2.5 rounded-sm mb-3 font-label text-[10px]"
           >
-            <Settings size={18} className="text-secondary" />
-            <span className="text-primary font-medium">Settings</span>
+            <Settings size={13} /> settings
           </button>
         )}
 
-        {/* Profile & Logout */}
-        <div className="glass-card rounded-2xl p-4">
-          <div className="flex items-center gap-3 p-3 glass-button rounded-xl mb-3">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 ${
-              settings.theme === 'dark' ? 'bg-white' : 'bg-black'
-            }`}>
-              <span className={`font-bold ${settings.theme === 'dark' ? 'text-black' : 'text-white'}`}>
-                {user?.name?.[0]?.toUpperCase() || 'U'}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-primary font-semibold truncate">{user?.name || 'User'}</div>
-              {user?.email && <div className="text-secondary text-sm truncate">{user.email}</div>}
-              <div className="flex items-center gap-2 mt-1">
-                <div className={`text-xs px-2 py-0.5 rounded-full border ${
-                  settings.theme === 'dark'
-                    ? 'bg-white/10 text-white border-white/20'
-                    : 'bg-black/10 text-black border-black/20'
-                }`}>
-                  Local
-                </div>
-                {settings.security.encryptionEnabled && (
-                  <div className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                    settings.theme === 'dark'
-                      ? 'bg-white/10 text-white border-white/20'
-                      : 'bg-black/10 text-black border-black/20'
-                  }`}>
-                    <Shield size={8} />
-                    Encrypted
-                  </div>
-                )}
-              </div>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center font-display text-lg flex-shrink-0">
+            {user?.name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div className="min-w-0">
+            <div className="font-display text-lg leading-tight text-ink truncate">{user?.name || 'User'}</div>
+            <div className="font-label text-[8px] text-ink-faint truncate">
+              {user?.email || 'local profile'}
             </div>
           </div>
-
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleLogout}
-            className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl transition-all duration-200 border ${
-              settings.theme === 'dark'
-                ? 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/30 text-white'
-                : 'bg-black/10 hover:bg-black/20 border-black/20 hover:border-black/30 text-black'
-            }`}
-          >
-            <LogOut size={16} />
-            <span className="font-medium">Sign Out & Clear Data</span>
-          </motion.button>
         </div>
+
+        <button
+          onClick={handleLogout}
+          className="btn-paper haptic w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-label text-[10px]"
+        >
+          <LogOut size={12} />
+          sign out & clear data
+        </button>
       </div>
     </motion.div>
   );
