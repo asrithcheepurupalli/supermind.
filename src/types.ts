@@ -35,16 +35,9 @@ export interface User {
   email: string;
   name: string;
   avatar?: string;
-  subscription?: 'free' | 'pro' | 'enterprise';
-  preferences?: {
-    defaultCategory: string;
-    autoReminders: boolean;
-    emailDigest: 'daily' | 'weekly' | 'never';
-  };
   encryptionEnabled?: boolean;
   encryptionSalt?: string;
-  oauthProvider?: 'google' | 'github' | 'apple' | 'email';
-  oauthId?: string;
+  createdAt?: Date;
 }
 
 export interface Category {
@@ -61,6 +54,7 @@ export interface FilterState {
   contentType: string;
   tags: string[];
   searchQuery: string;
+  favoritesOnly: boolean;
   dateRange?: {
     start: Date;
     end: Date;
@@ -92,7 +86,6 @@ export interface AppSettings {
   };
   security: {
     encryptionEnabled: boolean;
-    biometricAuth: boolean;
     autoLock: boolean;
     autoLockTimeout: number;
   };
@@ -121,8 +114,8 @@ export interface AnalyticsData {
   topCategories: Array<{ name: string; count: number }>;
   topTags: Array<{ name: string; count: number }>;
   activityData: Array<{ date: string; count: number }>;
-  encryptedItems: number;
-  securityScore: number;
+  encryptedItems?: number;
+  securityScore?: number;
 }
 
 export interface EncryptedContent {
@@ -136,7 +129,7 @@ export interface EncryptedContent {
   category: string;
   isFavorite: boolean;
   reminderDate?: Date;
-  metadata?: any;
-  aiGenerated?: any;
+  metadata?: SavedContent['metadata'];
+  aiGenerated?: SavedContent['aiGenerated'];
   encryptionVersion: string;
 }

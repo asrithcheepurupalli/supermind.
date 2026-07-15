@@ -60,7 +60,7 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
       await encryptionManager.generateMasterKey(password);
       onComplete(password);
       toast.success(isLogin ? 'Encryption key loaded' : 'Encryption setup complete');
-    } catch (error) {
+    } catch {
       toast.error('Failed to setup encryption');
     } finally {
       setIsLoading(false);

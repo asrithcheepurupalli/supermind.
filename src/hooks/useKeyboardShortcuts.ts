@@ -50,7 +50,7 @@ export const useKeyboardShortcuts = () => {
         case '5':
           if (isModifierPressed) {
             event.preventDefault();
-            const categoryMap = ['all', 'articles', 'education', 'health', 'fashion'];
+            const categoryMap = ['all', 'articles', 'education', 'health', 'work'];
             const categoryIndex = parseInt(key) - 1;
             if (categoryMap[categoryIndex]) {
               setFilter({ ...filter, category: categoryMap[categoryIndex] });
@@ -61,12 +61,14 @@ export const useKeyboardShortcuts = () => {
         case 'f':
           if (isModifierPressed && shiftKey) {
             event.preventDefault();
-            setFilter({ 
-              ...filter, 
+            setFilter({
+              ...filter,
               category: 'all',
               contentType: '',
               tags: [],
               searchQuery: '',
+              favoritesOnly: false,
+              dateRange: undefined,
             });
           }
           break;

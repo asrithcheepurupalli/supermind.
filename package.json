@@ -1,31 +1,26 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "supermind",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
+  "description": "Your local-first second brain: capture notes, links and files; organized automatically and searchable instantly — entirely on your device.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "date-fns": "^2.30.0",
+    "framer-motion": "^10.16.16",
+    "fuse.js": "^7.0.0",
     "lucide-react": "^0.344.0",
+    "ogl": "^1.0.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "framer-motion": "^10.16.16",
-    "react-router-dom": "^6.20.1",
-    "zustand": "^4.4.7",
-    "react-hook-form": "^7.48.2",
     "react-hot-toast": "^2.4.1",
-    "date-fns": "^2.30.0",
-    "fuse.js": "^7.0.0",
-    "react-dropzone": "^14.2.3",
-    "react-intersection-observer": "^9.5.3",
-    "react-virtualized-auto-sizer": "^1.0.20",
-    "react-window": "^1.8.8",
-    "@types/react-window": "^1.8.8",
-    "ogl": "^1.0.6"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

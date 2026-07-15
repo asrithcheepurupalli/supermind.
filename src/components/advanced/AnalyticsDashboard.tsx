@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -21,28 +20,24 @@ export default function AnalyticsDashboard() {
       value: analytics.totalItems,
       icon: BarChart3,
       color: 'text-primary bg-black/10 dark:bg-white/10',
-      change: '+12%',
     },
     {
       label: 'This Week',
       value: analytics.itemsThisWeek,
       icon: Calendar,
       color: 'text-primary bg-black/10 dark:bg-white/10',
-      change: '+8%',
     },
     {
       label: 'Favorites',
       value: analytics.favoriteItems,
       icon: Star,
       color: 'text-primary bg-black/10 dark:bg-white/10',
-      change: '+5%',
     },
     {
       label: 'Unique Tags',
       value: analytics.topTags.length,
       icon: Tag,
       color: 'text-primary bg-black/10 dark:bg-white/10',
-      change: '+15%',
     },
   ];
 
@@ -64,7 +59,6 @@ export default function AnalyticsDashboard() {
                 <div className={`p-2 rounded-lg ${stat.color}`}>
                   <IconComponent size={20} />
                 </div>
-                <span className="text-secondary text-sm font-medium">{stat.change}</span>
               </div>
               <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
               <div className="text-secondary text-sm">{stat.label}</div>
@@ -81,6 +75,9 @@ export default function AnalyticsDashboard() {
             <TrendingUp size={20} className="text-primary" />
             Top Categories
           </h3>
+          {analytics.topCategories.length === 0 && (
+            <p className="text-secondary text-sm py-6 text-center">Add content to see category breakdowns.</p>
+          )}
           <div className="space-y-3">
             {analytics.topCategories.map((category, index) => (
               <div key={category.name} className="flex items-center justify-between">
@@ -100,7 +97,7 @@ export default function AnalyticsDashboard() {
                       className={`h-full rounded-full ${
                         settings.theme === 'dark' ? 'bg-white' : 'bg-black'
                       }`}
-                      style={{ width: `${(category.count / analytics.totalItems) * 100}%` }}
+                      style={{ width: `${(category.count / Math.max(1, analytics.totalItems)) * 100}%` }}
                     />
                   </div>
                   <span className="text-secondary text-sm w-8">{category.count}</span>
@@ -117,13 +114,13 @@ export default function AnalyticsDashboard() {
             Activity (Last 30 Days)
           </h3>
           <div className="flex items-end justify-between h-32 gap-1">
-            {analytics.activityData.slice(-14).map((day, index) => (
+            {analytics.activityData.slice(-14).map((day) => (
               <div key={day.date} className="flex-1 flex flex-col items-center">
                 <div 
                   className={`w-full rounded-t-sm min-h-[4px] ${
                     settings.theme === 'dark' ? 'bg-white' : 'bg-black'
                   }`}
-                  style={{ height: `${Math.max(4, (day.count / Math.max(...analytics.activityData.map(d => d.count))) * 100)}%` }}
+                  style={{ height: `${Math.max(4, (day.count / Math.max(1, ...analytics.activityData.map(d => d.count))) * 100)}%` }}
                 />
                 <span className="text-xs text-muted mt-2">
                   {new Date(day.date).getDate()}
@@ -140,6 +137,9 @@ export default function AnalyticsDashboard() {
           <Tag size={20} className="text-primary" />
           Popular Tags
         </h3>
+        {analytics.topTags.length === 0 && (
+          <p className="text-secondary text-sm py-6 text-center">Tags will appear here as your library grows.</p>
+        )}
         <div className="flex flex-wrap gap-2">
           {analytics.topTags.map((tag) => (
             <span

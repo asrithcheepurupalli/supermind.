@@ -226,6 +226,9 @@ const Particles: React.FC<ParticlesProps> = ({
         container.removeChild(gl.canvas);
       }
     };
+    // particleColors is intentionally omitted: array literals get a new identity
+    // every render, which would tear down and rebuild the WebGL scene each frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     particleCount,
     particleSpread,

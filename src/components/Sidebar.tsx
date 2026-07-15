@@ -1,11 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { 
-  Grid3X3, 
-  FileText, 
-  GraduationCap, 
-  Heart, 
-  Shirt, 
+import {
+  Grid3X3,
+  FileText,
+  GraduationCap,
+  Heart,
+  Briefcase,
   ShoppingBag,
   Link,
   Image,
@@ -13,7 +13,6 @@ import {
   Video,
   Headphones,
   Type,
-  Plus,
   Search,
   Settings,
   Star,
@@ -21,7 +20,7 @@ import {
   Shield,
   X,
   LogOut,
-  Sparkles
+  type LucideIcon,
 } from 'lucide-react';
 import { Category, FilterState } from '../types';
 import { useStore } from '../store/useStore';
@@ -31,7 +30,6 @@ interface SidebarProps {
   categories: Category[];
   filter: FilterState;
   onFilterChange: (filter: FilterState) => void;
-  onNewTag: (tag: string) => void;
   onClose?: () => void;
   isMobile?: boolean;
 }
@@ -45,98 +43,91 @@ const contentTypeIcons = {
   text: Type,
 };
 
-const categoryIcons = {
+const categoryIcons: Record<string, LucideIcon> = {
   Grid3X3,
   FileText,
   GraduationCap,
   Heart,
-  Shirt,
+  Briefcase,
   ShoppingBag,
 };
 
-export default function Sidebar({ 
-  categories, 
-  filter, 
-  onFilterChange, 
-  onNewTag,
+export default function Sidebar({
+  categories,
+  filter,
+  onFilterChange,
   onClose,
-  isMobile = false
+  isMobile = false,
 }: SidebarProps) {
-  const { user, setSettingsModalOpen, settings, getSecurityScore, logout } = useStore();
-  const [newTagInput, setNewTagInput] = React.useState('');
+  const { user, content, setSettingsModalOpen, settings, getSecurityScore, logout } = useStore();
   const securityScore = getSecurityScore();
+
+  // Top tags derived from actual content.
+  const topTags = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of content) {
+      for (const tag of item.tags) {
+        counts.set(tag, (counts.get(tag) || 0) + 1);
+      }
+    }
+    return [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag]) => tag);
+  }, [content]);
 
   const handleCategorySelect = (categoryId: string) => {
     onFilterChange({ ...filter, category: categoryId });
   };
 
   const handleContentTypeSelect = (contentType: string) => {
-    onFilterChange({ 
-      ...filter, 
-      contentType: filter.contentType === contentType ? '' : contentType 
+    onFilterChange({
+      ...filter,
+      contentType: filter.contentType === contentType ? '' : contentType,
     });
   };
 
-  const handleAddTag = () => {
-    if (newTagInput.trim()) {
-      onNewTag(newTagInput.trim());
-      setNewTagInput('');
+  const handleTagToggle = (tag: string) => {
+    onFilterChange({
+      ...filter,
+      tags: filter.tags.includes(tag)
+        ? filter.tags.filter(t => t !== tag)
+        : [...filter.tags, tag],
+    });
+  };
+
+  const handleLogout = () => {
+    if (!window.confirm('Sign out? This clears your profile and all locally stored data on this device. Export a backup first if you want to keep your content.')) {
+      return;
     }
+    logout();
+    if (isMobile) onClose?.();
   };
 
   return (
     <motion.div
       initial={{ x: -300 }}
       animate={{ x: 0 }}
-      className={`${isMobile ? 'w-80' : 'w-80'} h-screen glass-sidebar flex flex-col`}
+      className="w-80 h-screen glass-sidebar flex flex-col"
     >
       {/* Header */}
       <div className={`p-6 ${settings.theme === 'dark' ? 'border-b border-white/10' : 'border-b border-black/10'}`}>
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="relative"
-            >
-              <h1 className="logo-text relative z-10">supermind.</h1>
-              {/* Premium Light Finish */}
-              <motion.div
-                animate={{ 
-                  opacity: [0.3, 0.8, 0.3],
-                  scale: [1, 1.05, 1],
-                }}
-                transition={{ 
-                  duration: 3,
-                  repeat: 999999999,
-                  ease: "easeInOut"
-                }}
-                className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 via-blue-400/20 to-purple-400/20 rounded-lg blur-sm"
-              />
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: 999999999, ease: "linear" }}
-                className="absolute -top-1 -right-1 w-3 h-3"
-              >
-                <Sparkles className="text-emerald-400" size={12} />
-              </motion.div>
-            </motion.div>
-            {isMobile && (
+          <h1 className="logo-text">supermind.</h1>
+          <div className="flex items-center gap-2">
+            {settings.security.encryptionEnabled && (
+              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600" title="Encryption enabled">
+                <Shield size={14} />
+              </div>
+            )}
+            {isMobile ? (
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg glass-button text-secondary hover:text-primary transition-all duration-200"
               >
                 <X size={18} />
               </button>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {settings.security.encryptionEnabled && (
-              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-600">
-                <Shield size={14} />
-              </div>
-            )}
-            {!isMobile && (
+            ) : (
               <button
                 onClick={() => setSettingsModalOpen(true)}
                 className="p-2 rounded-lg glass-button text-secondary hover:text-primary transition-all duration-200"
@@ -149,13 +140,9 @@ export default function Sidebar({
 
         {/* Security Status */}
         {settings.security.encryptionEnabled && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
-          >
+          <div className="mb-4">
             <SecurityBadge variant="compact" />
-          </motion.div>
+          </div>
         )}
 
         {/* Search */}
@@ -182,9 +169,9 @@ export default function Sidebar({
           <h2 className="text-lg font-semibold text-primary mb-4">Library</h2>
           <div className="space-y-2">
             {categories.map((category, index) => {
-              const IconComponent = categoryIcons[category.icon as keyof typeof categoryIcons];
+              const IconComponent = categoryIcons[category.icon] ?? FileText;
               const isActive = filter.category === category.id;
-              
+
               return (
                 <motion.button
                   key={category.id}
@@ -205,18 +192,15 @@ export default function Sidebar({
                     <IconComponent size={18} />
                     <span className="font-medium">{category.name}</span>
                   </div>
-                  <motion.span 
-                    key={category.count}
-                    initial={{ scale: 1.2 }}
-                    animate={{ scale: 1 }}
+                  <span
                     className={`text-sm px-2 py-1 rounded-full ${
-                      isActive 
+                      isActive
                         ? settings.theme === 'dark' ? 'bg-white/30' : 'bg-black/30'
                         : settings.theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
                     }`}
                   >
                     {category.count}
-                  </motion.span>
+                  </span>
                 </motion.button>
               );
             })}
@@ -256,66 +240,53 @@ export default function Sidebar({
         {/* Quick Filters */}
         <div className="px-6 pb-6">
           <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Quick Filters</h3>
-          <div className="space-y-3">
-            <button
-              onClick={() => {
-                onFilterChange({ ...filter, category: 'all', contentType: '', tags: [], searchQuery: '' });
-                if (isMobile) onClose?.();
-              }}
-              className="w-full flex items-center gap-2 p-3 text-sm text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 rounded-xl transition-all duration-200 touch-manipulation"
-            >
-              <Star size={14} />
-              Favorites Only
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              onFilterChange({ ...filter, favoritesOnly: !filter.favoritesOnly });
+              if (isMobile) onClose?.();
+            }}
+            className={`w-full flex items-center gap-2 p-3 text-sm rounded-xl transition-all duration-200 touch-manipulation ${
+              filter.favoritesOnly
+                ? 'bg-black text-white dark:bg-white dark:text-black'
+                : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
+            }`}
+          >
+            <Star size={14} fill={filter.favoritesOnly ? 'currentColor' : 'none'} />
+            Favorites Only
+          </button>
         </div>
 
         {/* Tags */}
         <div className="px-6 pb-6">
-          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Tags</h3>
-          <div className="space-y-3 mb-4">
-            {['productivity', 'health', 'education', 'design'].map((tag, index) => (
-              <motion.button
-                key={tag}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-3 p-2 text-sm text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-all duration-200 touch-manipulation w-full"
-              >
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                {tag}
-              </motion.button>
-            ))}
-          </div>
-          <div className="flex gap-3">
-            <input
-              type="text"
-              placeholder="New Tag..."
-              value={newTagInput}
-              onChange={(e) => setNewTagInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-              className="flex-1 p-3 glass-input rounded-xl text-primary placeholder-muted transition-all duration-200"
-            />
-            <button
-              onClick={handleAddTag}
-              className={`p-3 rounded-xl transition-all duration-200 touch-manipulation ${
-                settings.theme === 'dark' 
-                  ? 'bg-white/10 hover:bg-white/20 text-white' 
-                  : 'bg-black/10 hover:bg-black/20 text-black'
-              }`}
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+          <h3 className="text-sm font-semibold text-muted uppercase tracking-wider mb-3">Top Tags</h3>
+          {topTags.length === 0 ? (
+            <p className="text-muted text-sm">Tags appear here as you add content.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {topTags.map((tag) => {
+                const isActive = filter.tags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => handleTagToggle(tag)}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-full transition-all duration-200 touch-manipulation ${
+                      isActive
+                        ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/40'
+                        : 'text-secondary hover:text-primary glass-button'
+                    }`}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Footer */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 border-t border-gray-800/50"
-      >
+      <div className="p-6 border-t border-gray-800/50">
         {/* Security Score */}
         {settings.security.encryptionEnabled && !isMobile && (
           <div className="mb-4 p-3 glass-button rounded-xl">
@@ -328,14 +299,12 @@ export default function Sidebar({
                 initial={{ width: 0 }}
                 animate={{ width: `${securityScore}%` }}
                 transition={{ duration: 1, delay: 0.5 }}
-                className={`h-2 rounded-full ${
-                  settings.theme === 'dark' ? 'bg-white' : 'bg-black'
-                }`}
+                className={`h-2 rounded-full ${settings.theme === 'dark' ? 'bg-white' : 'bg-black'}`}
               />
             </div>
           </div>
         )}
-        
+
         {/* Mobile Settings Button */}
         {isMobile && (
           <button
@@ -349,79 +318,57 @@ export default function Sidebar({
             <span className="text-primary font-medium">Settings</span>
           </button>
         )}
-        
-        {/* Logout Button */}
-        <div className="glass-card rounded-2xl p-4 mb-4">
-          {/* User Profile Display */}
+
+        {/* Profile & Logout */}
+        <div className="glass-card rounded-2xl p-4">
           <div className="flex items-center gap-3 p-3 glass-button rounded-xl mb-3">
-            <div className="relative">
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg ${
-                settings.theme === 'dark' ? 'bg-white' : 'bg-black'
-              }`}>
-                <span className={`font-bold ${
-                  settings.theme === 'dark' ? 'text-black' : 'text-white'
-                }`}>{user?.name?.[0] || 'U'}</span>
-              </div>
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: 999999999 }}
-                className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 ${
-                  settings.theme === 'dark' 
-                    ? 'bg-white border-black' 
-                    : 'bg-black border-white'
-                }`}
-              />
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 ${
+              settings.theme === 'dark' ? 'bg-white' : 'bg-black'
+            }`}>
+              <span className={`font-bold ${settings.theme === 'dark' ? 'text-black' : 'text-white'}`}>
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </span>
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-primary font-semibold truncate">{user?.name || 'User'}</div>
-              <div className="text-secondary text-sm truncate">{user?.email || 'user@example.com'}</div>
+              {user?.email && <div className="text-secondary text-sm truncate">{user.email}</div>}
               <div className="flex items-center gap-2 mt-1">
                 <div className={`text-xs px-2 py-0.5 rounded-full border ${
-                  settings.theme === 'dark' 
-                    ? 'bg-white/10 text-white border-white/20' 
+                  settings.theme === 'dark'
+                    ? 'bg-white/10 text-white border-white/20'
                     : 'bg-black/10 text-black border-black/20'
                 }`}>
-                  {user?.subscription || 'Free'}
+                  Local
                 </div>
                 {settings.security.encryptionEnabled && (
                   <div className={`text-xs px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                    settings.theme === 'dark' 
-                      ? 'bg-white/10 text-white border-white/20' 
+                    settings.theme === 'dark'
+                      ? 'bg-white/10 text-white border-white/20'
                       : 'bg-black/10 text-black border-black/20'
                   }`}>
                     <Shield size={8} />
-                    Secure
+                    Encrypted
                   </div>
                 )}
               </div>
             </div>
           </div>
-          
-          {/* Logout Button */}
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              useStore.getState().logoutWithCleanup();
-              if (isMobile) onClose?.();
-            }}
-            className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl transition-all duration-200 group border ${
-              settings.theme === 'dark' 
-                ? 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/30 text-white' 
+            onClick={handleLogout}
+            className={`w-full flex items-center justify-center gap-2 p-3 rounded-xl transition-all duration-200 border ${
+              settings.theme === 'dark'
+                ? 'bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/30 text-white'
                 : 'bg-black/10 hover:bg-black/20 border-black/20 hover:border-black/30 text-black'
             }`}
           >
             <LogOut size={16} />
-            <span className="font-medium">Sign Out</span>
-            <motion.div
-              animate={{ x: [0, 4, 0] }}
-              transition={{ duration: 2, repeat: 999999999, ease: "easeInOut" }}
-            >
-              →
-            </motion.div>
+            <span className="font-medium">Sign Out & Clear Data</span>
           </motion.button>
         </div>
-      </motion.div>
+      </div>
     </motion.div>
   );
 }

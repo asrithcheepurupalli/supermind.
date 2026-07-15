@@ -1,24 +1,31 @@
 import React from 'react';
-import { 
-  X, 
-  Upload, 
-  Mic, 
-  Camera, 
-  Image, 
-  FileText, 
-  Type, 
+import {
+  X,
+  Upload,
+  Mic,
+  Camera,
+  Image,
+  FileText,
+  Type,
   Clipboard,
   Link,
-  Loader2
+  Loader2,
 } from 'lucide-react';
-import { generateTags, generateSummary, suggestCategory, suggestReminderDate } from '../utils/aiUtils';
 import toast from 'react-hot-toast';
+import { SavedContent } from '../types';
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddContent: (content: any) => void;
+  onAddContent: (content: SavedContent) => Promise<void> | void;
 }
+
+// Files up to this size are embedded as data URLs so they survive reloads.
+// Larger files only keep their name (browser localStorage is limited to ~5MB).
+const MAX_EMBED_SIZE = 1.5 * 1024 * 1024;
+
+const newId = () =>
+  `item_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 export default function UploadModal({ isOpen, onClose, onAddContent }: UploadModalProps) {
   const [dragActive, setDragActive] = React.useState(false);
@@ -29,53 +36,51 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
   const audioInputRef = React.useRef<HTMLInputElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const photoInputRef = React.useRef<HTMLInputElement>(null);
+  const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const uploadOptions = [
-    { 
-      id: 'audio', 
-      label: 'Audio', 
-      icon: Mic, 
+    {
+      id: 'audio',
+      label: 'Audio',
+      icon: Mic,
       color: 'text-orange-400 bg-orange-500/10 hover:bg-orange-500/20',
-      action: () => audioInputRef.current?.click()
+      action: () => audioInputRef.current?.click(),
     },
-    { 
-      id: 'camera', 
-      label: 'Camera', 
-      icon: Camera, 
+    {
+      id: 'camera',
+      label: 'Camera',
+      icon: Camera,
       color: 'text-green-400 bg-green-500/10 hover:bg-green-500/20',
-      action: () => cameraInputRef.current?.click()
+      action: () => cameraInputRef.current?.click(),
     },
-    { 
-      id: 'photos', 
-      label: 'Photos', 
-      icon: Image, 
+    {
+      id: 'photos',
+      label: 'Photos',
+      icon: Image,
       color: 'text-blue-400 bg-blue-500/10 hover:bg-blue-500/20',
-      action: () => photoInputRef.current?.click()
+      action: () => photoInputRef.current?.click(),
     },
-    { 
-      id: 'files', 
-      label: 'Files', 
-      icon: FileText, 
+    {
+      id: 'files',
+      label: 'Files',
+      icon: FileText,
       color: 'text-purple-400 bg-purple-500/10 hover:bg-purple-500/20',
-      action: () => fileInputRef.current?.click()
+      action: () => fileInputRef.current?.click(),
     },
-    { 
-      id: 'text', 
-      label: 'Text', 
-      icon: Type, 
+    {
+      id: 'text',
+      label: 'Text',
+      icon: Type,
       color: 'text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20',
       action: () => {
-        const textArea = document.querySelector('textarea[placeholder*="Write your thoughts"]') as HTMLTextAreaElement;
-        if (textArea) {
-          textArea.focus();
-          textArea.scrollIntoView({ behavior: 'smooth' });
-        }
-      }
+        textAreaRef.current?.focus();
+        textAreaRef.current?.scrollIntoView({ behavior: 'smooth' });
+      },
     },
-    { 
-      id: 'paste', 
-      label: 'Paste', 
-      icon: Clipboard, 
+    {
+      id: 'paste',
+      label: 'Paste',
+      icon: Clipboard,
       color: 'text-pink-400 bg-pink-500/10 hover:bg-pink-500/20',
       action: async () => {
         try {
@@ -84,10 +89,10 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
             setTextInput(text);
             toast.success('Content pasted from clipboard!');
           }
-        } catch (error) {
+        } catch {
           toast.error('Unable to access clipboard. Please paste manually.');
         }
-      }
+      },
     },
   ];
 
@@ -112,41 +117,23 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
     }
   };
 
-  const processFiles = async (files: File[]) => {
-    setIsProcessing(true);
-    
-    for (const file of files) {
-      const contentType = getContentType(file.type);
-      const content = file.name;
-      
-      const tags = generateTags(content, contentType);
-      const summary = generateSummary(content, contentType);
-      const category = suggestCategory(content, tags);
-      const reminderDate = suggestReminderDate(content);
+  const readFileAsDataURL = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
 
-      const newContent = {
-        id: Date.now().toString() + Math.random(),
-        contentText: content,
-        contentType,
-        sourceApp: 'Direct Upload',
-        timestamp: new Date(),
-        tags,
-        summary,
-        fileUrl: URL.createObjectURL(file),
-        reminderDate,
-        userId: 'user1',
-        category,
-        isFavorite: false,
-      };
+  const readFileAsText = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file);
+    });
 
-      onAddContent(newContent);
-    }
-    
-    setIsProcessing(false);
-    onClose();
-  };
-
-  const getContentType = (mimeType: string) => {
+  const getContentType = (mimeType: string): SavedContent['contentType'] => {
     if (mimeType.startsWith('image/')) return 'image';
     if (mimeType.startsWith('video/')) return 'video';
     if (mimeType.startsWith('audio/')) return 'audio';
@@ -154,63 +141,75 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
     return 'text';
   };
 
-  const handleFileSelect = async (files: FileList | null, inputType?: string) => {
+  const processFiles = async (files: File[]) => {
+    setIsProcessing(true);
+
+    try {
+      for (const file of files) {
+        const contentType = getContentType(file.type);
+
+        let fileUrl: string | undefined;
+        let contentText = file.name;
+
+        if (contentType === 'text' && file.size <= MAX_EMBED_SIZE) {
+          // Plain text files: store their actual content so it's searchable.
+          try {
+            contentText = `${file.name}\n\n${await readFileAsText(file)}`;
+          } catch {
+            contentText = file.name;
+          }
+        } else if (file.size <= MAX_EMBED_SIZE) {
+          fileUrl = await readFileAsDataURL(file);
+        } else {
+          toast(`"${file.name}" is larger than 1.5MB — saving its name only (local storage limit).`, { icon: 'ℹ️' });
+        }
+
+        const newContent: SavedContent = {
+          id: newId(),
+          contentText,
+          contentType,
+          sourceApp: 'Upload',
+          timestamp: new Date(),
+          tags: [],
+          summary: '',
+          fileUrl,
+          userId: 'local',
+          category: 'articles',
+          isFavorite: false,
+          metadata: { fileSize: file.size },
+        };
+
+        await onAddContent(newContent);
+      }
+      onClose();
+    } catch (error) {
+      console.error('Failed to process files:', error);
+      toast.error('Failed to process one or more files');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    
-    const fileArray = Array.from(files);
-    await processFiles(fileArray);
-  };
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      toast.success('Recording started! (Demo mode - recording not implemented)');
-      // In a real app, you would implement actual recording here
-      setTimeout(() => {
-        stream.getTracks().forEach(track => track.stop());
-        toast.info('Recording stopped. Feature coming soon!');
-      }, 3000);
-    } catch (error) {
-      toast.error('Microphone access denied or not available');
-    }
-  };
-
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      toast.success('Camera started! (Demo mode - capture not implemented)');
-      // In a real app, you would implement actual camera capture here
-      setTimeout(() => {
-        stream.getTracks().forEach(track => track.stop());
-        toast.info('Camera stopped. Feature coming soon!');
-      }, 3000);
-    } catch (error) {
-      toast.error('Camera access denied or not available');
-    }
+    await processFiles(Array.from(files));
   };
 
   const handleTextSubmit = async () => {
     if (!textInput.trim()) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      const tags = generateTags(textInput, 'text');
-      const summary = generateSummary(textInput, 'text');
-      const category = suggestCategory(textInput, tags);
-      const reminderDate = suggestReminderDate(textInput);
 
-      const newContent = {
-        id: Date.now().toString() + Math.random(),
-        contentText: textInput,
-        contentType: 'text' as const,
-        sourceApp: 'Direct Input',
+    setIsProcessing(true);
+    try {
+      const newContent: SavedContent = {
+        id: newId(),
+        contentText: textInput.trim(),
+        contentType: 'text',
+        sourceApp: 'Note',
         timestamp: new Date(),
-        tags,
-        summary,
-        reminderDate,
-        userId: 'user1',
-        category,
+        tags: [],
+        summary: '',
+        userId: 'local',
+        category: 'personal',
         isFavorite: false,
       };
 
@@ -225,25 +224,30 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
   };
 
   const handleLinkSubmit = async () => {
-    if (!linkInput.trim()) return;
-    
-    setIsProcessing(true);
-    
-    try {
-      const tags = generateTags(linkInput, 'link');
-      const summary = generateSummary(linkInput, 'link');
-      const category = suggestCategory(linkInput, tags);
+    const raw = linkInput.trim();
+    if (!raw) return;
 
-      const newContent = {
-        id: Date.now().toString() + Math.random(),
-        contentText: linkInput,
-        contentType: 'link' as const,
-        sourceApp: new URL(linkInput).hostname,
+    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    let hostname: string;
+    try {
+      hostname = new URL(withProtocol).hostname;
+    } catch {
+      toast.error('That does not look like a valid URL');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const newContent: SavedContent = {
+        id: newId(),
+        contentText: withProtocol,
+        contentType: 'link',
+        sourceApp: hostname,
         timestamp: new Date(),
-        tags,
-        summary,
-        userId: 'user1',
-        category,
+        tags: [],
+        summary: '',
+        userId: 'local',
+        category: 'articles',
         isFavorite: false,
       };
 
@@ -251,7 +255,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
       setLinkInput('');
       onClose();
     } catch (error) {
-      console.error('Failed to add content:', error);
+      console.error('Failed to add link:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -287,7 +291,9 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
         >
           <Upload className="mx-auto mb-4 text-gray-400" size={28} />
           <p className="text-gray-300 mb-2 text-sm lg:text-base">Drag and drop files here</p>
-          <p className="text-gray-500 text-xs lg:text-sm">Supports images, videos, audio, PDFs, and documents</p>
+          <p className="text-gray-500 text-xs lg:text-sm">
+            Images, videos, audio, PDFs and text files — stored locally on your device
+          </p>
         </div>
 
         {/* Quick Actions */}
@@ -346,6 +352,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
         <div className="mb-6">
           <label className="block text-white font-medium mb-3 text-sm lg:text-base">Add Text Note</label>
           <textarea
+            ref={textAreaRef}
             value={textInput}
             onChange={(e) => setTextInput(e.target.value)}
             placeholder="Write your thoughts, notes, or ideas..."
@@ -377,6 +384,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                 type="url"
                 value={linkInput}
                 onChange={(e) => setLinkInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleLinkSubmit()}
                 placeholder="https://example.com"
                 className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm lg:text-base"
               />
@@ -403,10 +411,10 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
           <div className="flex flex-col items-center justify-center py-6 text-sm lg:text-base">
             <div className="flex items-center gap-3 mb-2">
               <Loader2 className="animate-spin text-emerald-400" size={24} />
-              <span className="text-white font-medium">Processing with AI...</span>
+              <span className="text-white font-medium">Organizing your content...</span>
             </div>
             <p className="text-gray-400 text-xs text-center">
-              Analyzing content, generating tags, and creating summary
+              Tagging, summarizing, and categorizing — all on your device
             </p>
           </div>
         )}

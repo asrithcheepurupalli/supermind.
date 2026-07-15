@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lightbulb, CheckCircle, ArrowRight, Play, Pause, RotateCcw, Sparkles, Target, Zap, Brain, Search, Plus, Star, Filter, BarChart3, Shield, X, ChevronRight, Trophy, Gift, Rocket, Heart, Coffee, Magnet as Magic, Wand2, Clock, Eye, AlertCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, Target, Zap, Brain, Search, Plus, Filter, BarChart3, Shield, X, Trophy, Rocket, Wand2, Clock } from 'lucide-react';
 import { SavedContent } from '../types';
 import { useStore } from '../store/useStore';
 import toast from 'react-hot-toast';
@@ -89,14 +89,14 @@ const guideConfigs = {
     }
   },
   6: {
-    title: "Your Privacy Fortress 🔐",
-    subtitle: "Military-grade security for your thoughts",
+    title: "Your Privacy, By Design 🔐",
+    subtitle: "Local-first storage with optional encryption at rest",
     color: "from-green-500 to-emerald-500",
     icon: Shield,
     tasks: [
-      { id: 'understand-encryption', label: 'Understand encryption', icon: Shield, completed: false },
-      { id: 'local-ai', label: 'Learn about local AI', icon: Brain, completed: false },
-      { id: 'setup-security', label: 'Setup extra security', icon: CheckCircle, completed: false }
+      { id: 'understand-encryption', label: 'Understand encryption at rest', icon: Shield, completed: false },
+      { id: 'local-ai', label: 'Learn about on-device processing', icon: Brain, completed: false },
+      { id: 'setup-security', label: 'Review Settings → Security', icon: CheckCircle, completed: false }
     ],
     interactive: {
       type: 'security-demo',
@@ -106,10 +106,8 @@ const guideConfigs = {
 };
 
 export default function InteractiveGuide({ content, onComplete, onDismiss }: InteractiveGuideProps) {
-  const { setUploadModalOpen, settings } = useStore();
-  const [currentStep, setCurrentStep] = React.useState(0);
+  const { setUploadModalOpen, settings, content: allContent } = useStore();
   const [completedTasks, setCompletedTasks] = React.useState<string[]>([]);
-  const [isPlaying, setIsPlaying] = React.useState(false);
   const [showCelebration, setShowCelebration] = React.useState(false);
   const [progress, setProgress] = React.useState(0);
 
@@ -143,13 +141,14 @@ export default function InteractiveGuide({ content, onComplete, onDismiss }: Int
         setUploadModalOpen(true);
         handleTaskComplete('add-content');
         break;
-      case 'try-search':
+      case 'try-search': {
         const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
         if (searchInput) {
           searchInput.focus();
           handleTaskComplete('try-search');
         }
         break;
+      }
       case 'visit-analytics':
         handleTaskComplete('visit-analytics');
         break;
@@ -237,7 +236,7 @@ export default function InteractiveGuide({ content, onComplete, onDismiss }: Int
               />
             </div>
             <div className="flex flex-wrap gap-2">
-              {config.interactive.examples?.map((example, index) => (
+              {('examples' in config.interactive ? config.interactive.examples : []).map((example: string, index: number) => (
                 <motion.button
                   key={example}
                   initial={{ opacity: 0, scale: 0.8 }}
@@ -292,10 +291,10 @@ export default function InteractiveGuide({ content, onComplete, onDismiss }: Int
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: 'Items Added', value: '23', color: 'text-emerald-600' },
-                { label: 'Categories', value: '5', color: 'text-blue-600' },
-                { label: 'Favorites', value: '8', color: 'text-yellow-600' },
-                { label: 'This Week', value: '12', color: 'text-purple-600' },
+                { label: 'Items Added', value: String(allContent.length), color: 'text-emerald-600' },
+                { label: 'Categories', value: String(new Set(allContent.map(c => c.category)).size), color: 'text-blue-600' },
+                { label: 'Favorites', value: String(allContent.filter(c => c.isFavorite).length), color: 'text-yellow-600' },
+                { label: 'Unique Tags', value: String(new Set(allContent.flatMap(c => c.tags)).size), color: 'text-purple-600' },
               ].map((stat, index) => (
                 <motion.div
                   key={stat.label}
@@ -339,9 +338,9 @@ export default function InteractiveGuide({ content, onComplete, onDismiss }: Int
             </div>
             <div className="grid grid-cols-1 gap-3">
               {[
-                { icon: Shield, label: 'End-to-end encryption', status: 'active' },
-                { icon: Brain, label: 'Local AI processing', status: 'active' },
-                { icon: Target, label: 'Zero-knowledge architecture', status: 'active' },
+                { icon: Shield, label: 'AES-256 encryption at rest (optional)', status: 'active' },
+                { icon: Brain, label: 'On-device processing only', status: 'active' },
+                { icon: Target, label: 'No servers, no accounts, no tracking', status: 'active' },
               ].map((feature, index) => (
                 <motion.div
                   key={feature.label}

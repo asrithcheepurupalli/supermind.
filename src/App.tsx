@@ -1,8 +1,11 @@
 import React from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
-import { Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap, Brain, Shield, Star, Filter, Grid, List, Calendar, Tag, TrendingUp, Activity, Clock, Bookmark, Archive, Share2, Download, Upload, Trash2, Edit3, Eye, EyeOff, Lock, Unlock, RefreshCw, ChevronDown, ChevronRight, Layers, Sparkles, Globe, Database, Cpu, Network, Infinity, Telescope, Microscope, Compass, Map, Route, Puzzle, Magnet, Orbit, Waves, Target, Rocket, Heart, Coffee, Lightbulb, Palette, Code, Music, Camera, Video, Mic, FileText, Image, Link as LinkIcon, Headphones, Type, FileType, LogOut, Grid3X3 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, User, Zap,
+  Brain, Shield, Star, Grid, Clock, TrendingUp, Sparkles, Database,
+  Network, Lightbulb, Download, Eye, ChevronRight, Tag as TagIcon, CalendarClock,
+} from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { authService } from './utils/auth';
 import LandingPage from './components/LandingPage';
 import Sidebar from './components/Sidebar';
 import Timeline from './components/Timeline';
@@ -13,13 +16,16 @@ import EncryptionSetup from './components/EncryptionSetup';
 import SecurityBadge from './components/SecurityBadge';
 import AnalyticsDashboard from './components/advanced/AnalyticsDashboard';
 import Toast from './components/ui/Toast';
-import OAuthCallback from './components/OAuthCallback';
 import AboutPage from './components/AboutPage';
-import { useStore } from './store/useStore';
+import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useAutoLock } from './hooks/useAutoLock';
+import { useInsights } from './hooks/useInsights';
+import { formatDistanceToNow } from 'date-fns';
+
+type ActiveView = 'home' | 'timeline' | 'analytics' | 'insights' | 'profile';
 
 function App() {
-  const { scrollY } = useScroll();
   const {
     user,
     isAuthenticated,
@@ -29,7 +35,6 @@ function App() {
     setupEncryption,
     unlockEncryption,
     content,
-    categories,
     filter,
     isUploadModalOpen,
     setUploadModalOpen,
@@ -39,34 +44,53 @@ function App() {
     setFilter,
     settings,
     setSettingsModalOpen,
+    exportContent,
   } = useStore();
 
-  const [showAnalytics, setShowAnalytics] = React.useState(false);
-  const [isLogin, setIsLogin] = React.useState(true);
   const [showLanding, setShowLanding] = React.useState(!isAuthenticated);
   const [showAbout, setShowAbout] = React.useState(false);
-  const [needsEncryptionUnlock, setNeedsEncryptionUnlock] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
-  const [activeView, setActiveView] = React.useState<'home' | 'timeline' | 'analytics' | 'search' | 'profile'>('home');
+  const [activeView, setActiveView] = React.useState<ActiveView>('home');
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [quickActions, setQuickActions] = React.useState(false);
   const [showWelcome, setShowWelcome] = React.useState(true);
-  const [notifications, setNotifications] = React.useState(false);
+  const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
-  // Enable keyboard shortcuts
   useKeyboardShortcuts();
+  useAutoLock();
 
-  // Handle OAuth callbacks
-  React.useEffect(() => {
-    const path = window.location.pathname;
-    const callbackMatch = path.match(/^\/auth\/callback\/(.+)$/);
-    
-    if (callbackMatch) {
-      const provider = callbackMatch[1];
-      return;
+  const categories = React.useMemo(() => getCategoriesWithCounts(content), [content]);
+  const insights = useInsights(content);
+
+  // Real notifications, derived from the user's own data.
+  const remindersEnabled = settings.notifications.reminders;
+  const notifications = React.useMemo(() => {
+    if (!remindersEnabled) return [];
+    const now = Date.now();
+    const items: Array<{ id: string; text: string; detail: string; color: string }> = [];
+    for (const c of content) {
+      if (c.metadata?.isGuide) continue;
+      if (c.reminderDate && c.reminderDate.getTime() < now) {
+        items.push({
+          id: `overdue-${c.id}`,
+          text: `Reminder due: ${c.contentText.slice(0, 60)}`,
+          detail: formatDistanceToNow(c.reminderDate, { addSuffix: true }),
+          color: 'bg-red-500',
+        });
+      } else if (c.reminderDate) {
+        items.push({
+          id: `upcoming-${c.id}`,
+          text: `Upcoming: ${c.contentText.slice(0, 60)}`,
+          detail: formatDistanceToNow(c.reminderDate, { addSuffix: true }),
+          color: 'bg-blue-500',
+        });
+      }
     }
-    
-    if (path === '/about') {
+    return items.slice(0, 6);
+  }, [content, remindersEnabled]);
+
+  React.useEffect(() => {
+    if (window.location.pathname === '/about') {
       setShowAbout(true);
       setShowLanding(false);
     }
@@ -75,49 +99,47 @@ function App() {
   // Apply theme
   React.useEffect(() => {
     const root = document.documentElement;
+    const applyDark = (dark: boolean) => root.classList.toggle('dark', dark);
     if (settings.theme === 'dark') {
-      root.classList.add('dark');
+      applyDark(true);
     } else if (settings.theme === 'light') {
-      root.classList.remove('dark');
+      applyDark(false);
     } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      applyDark(media.matches);
+      const listener = (e: MediaQueryListEvent) => applyDark(e.matches);
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
     }
   }, [settings.theme]);
 
-  const handleAuth = (email: string, password: string, name?: string) => {
+  const isDark = settings.theme === 'dark' ||
+    (settings.theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  const handleCreateProfile = async (name: string, email: string, encryptionPassword?: string) => {
     const newUser = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+      id: `local_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
       email,
-      name: name || email.split('@')[0],
-      subscription: 'free' as const,
+      name,
       encryptionEnabled: false,
+      createdAt: new Date(),
     };
     setUser(newUser);
-    toast.success(`Welcome ${newUser.name}! 🎉`);
+    toast.success(`Welcome, ${newUser.name}! 🎉`);
+    if (encryptionPassword) {
+      await setupEncryption(encryptionPassword);
+    }
   };
 
-  const handleNewTag = (tag: string) => {
-    console.log('New tag added:', tag);
-  };
-
-  const handleGetStarted = () => {
-    setShowLanding(false);
-  };
-  
   const handleShowAbout = () => {
     setShowAbout(true);
     setShowLanding(false);
     window.history.pushState({}, '', '/about');
   };
-  
+
   const handleBackFromAbout = () => {
     setShowAbout(false);
-    setShowLanding(true);
+    setShowLanding(!isAuthenticated);
     window.history.pushState({}, '', '/');
   };
 
@@ -130,99 +152,56 @@ function App() {
     }
   };
 
-  const handleEncryptionUnlock = async (password: string) => {
-    const success = await unlockEncryption(password);
-    if (success) {
-      setNeedsEncryptionUnlock(false);
-    }
-    return success;
-  };
+  const needsEncryptionUnlock = isAuthenticated && user?.encryptionEnabled && !isEncryptionSetup;
 
-  React.useEffect(() => {
-    if (isAuthenticated && user?.encryptionEnabled && !isEncryptionSetup) {
-      setNeedsEncryptionUnlock(true);
-    }
-  }, [isAuthenticated, user?.encryptionEnabled, isEncryptionSetup]);
-
-  // Transform values for parallax effects
-  const headerY = useTransform(scrollY, [0, 300], [0, -50]);
-
-  const path = window.location.pathname;
-  const callbackMatch = path.match(/^\/auth\/callback\/(.+)$/);
-  
-  if (callbackMatch) {
-    const provider = callbackMatch[1];
-    return <OAuthCallback provider={provider} />;
-  }
-
-  if (showLanding) {
-    return <LandingPage onGetStarted={handleGetStarted} onAbout={handleShowAbout} />;
-  }
-  
   if (showAbout) {
     return <AboutPage onBack={handleBackFromAbout} />;
+  }
+
+  if (!isAuthenticated && showLanding) {
+    return <LandingPage onGetStarted={() => setShowLanding(false)} onAbout={handleShowAbout} />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <AuthModal onComplete={handleCreateProfile} />
+        <Toast />
+      </>
+    );
   }
 
   if (needsEncryptionUnlock) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <EncryptionSetup 
-            onComplete={handleEncryptionUnlock} 
-            isLogin={true}
-          />
+          <EncryptionSetup onComplete={unlockEncryption} isLogin={true} />
         </div>
+        <Toast />
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <>
-        <AuthModal
-          isLogin={isLogin}
-          onToggle={() => setIsLogin(!isLogin)}
-          onAuth={handleAuth}
-        />
-        <Toast />
-      </>
-    );
-  }
+  const viewSwitcher = [
+    { id: 'timeline' as const, icon: Clock, label: 'Timeline' },
+    { id: 'analytics' as const, icon: BarChart3, label: 'Analytics' },
+    { id: 'insights' as const, icon: Brain, label: 'Insights' },
+  ];
 
   return (
-    <div className={`flex h-screen overflow-hidden ${settings.theme === 'dark' ? 'dark bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'}`}>
-      {/* Minimal Background */}
+    <div className={`flex h-screen overflow-hidden ${isDark ? 'dark bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950' : 'bg-gradient-to-br from-gray-50 via-white to-gray-100'}`}>
+      {/* Ambient Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          animate={{ 
-            rotate: 360,
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ 
-            rotate: { duration: 50, repeat: Infinity, ease: "linear" },
-            scale: { duration: 8, repeat: Infinity, ease: "easeInOut" },
-          }}
-          className={`absolute -top-40 -right-40 w-96 h-96 rounded-full blur-3xl ${
-            settings.theme === 'dark' 
-              ? 'bg-gradient-to-br from-emerald-500/5 via-blue-500/5 to-purple-500/5' 
-              : 'bg-gradient-to-br from-emerald-500/3 via-blue-500/3 to-purple-500/3'
-          }`}
-        />
-        <motion.div
-          animate={{ 
-            rotate: -360,
-            scale: [1, 1.2, 1],
-          }}
-          transition={{ 
-            rotate: { duration: 60, repeat: Infinity, ease: "linear" },
-            scale: { duration: 10, repeat: Infinity, ease: "easeInOut" },
-          }}
-          className={`absolute top-40 -left-40 w-96 h-96 rounded-full blur-3xl ${
-            settings.theme === 'dark'
-              ? 'bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-orange-500/5'
-              : 'bg-gradient-to-br from-purple-500/3 via-pink-500/3 to-orange-500/3'
-          }`}
-        />
+        <div className={`absolute -top-40 -right-40 w-96 h-96 rounded-full blur-3xl ${
+          isDark
+            ? 'bg-gradient-to-br from-emerald-500/5 via-blue-500/5 to-purple-500/5'
+            : 'bg-gradient-to-br from-emerald-500/3 via-blue-500/3 to-purple-500/3'
+        }`} />
+        <div className={`absolute top-40 -left-40 w-96 h-96 rounded-full blur-3xl ${
+          isDark
+            ? 'bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-orange-500/5'
+            : 'bg-gradient-to-br from-purple-500/3 via-pink-500/3 to-orange-500/3'
+        }`} />
       </div>
 
       {/* Mobile Sidebar Overlay */}
@@ -233,16 +212,14 @@ function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className={`fixed inset-0 backdrop-blur-sm z-40 lg:hidden ${
-                settings.theme === 'dark' ? 'bg-black/60' : 'bg-white/60'
-              }`}
+              className={`fixed inset-0 backdrop-blur-sm z-40 lg:hidden ${isDark ? 'bg-black/60' : 'bg-white/60'}`}
               onClick={() => setIsMobileSidebarOpen(false)}
             />
             <motion.div
               initial={{ x: -320 }}
               animate={{ x: 0 }}
               exit={{ x: -320 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed left-0 top-0 bottom-0 z-50 lg:hidden"
             >
               <Sidebar
@@ -252,7 +229,6 @@ function App() {
                   setFilter(newFilter);
                   setIsMobileSidebarOpen(false);
                 }}
-                onNewTag={handleNewTag}
                 onClose={() => setIsMobileSidebarOpen(false)}
                 isMobile={true}
               />
@@ -267,14 +243,12 @@ function App() {
           categories={categories}
           filter={filter}
           onFilterChange={setFilter}
-          onNewTag={handleNewTag}
         />
       </div>
-      
+
       <div className="flex-1 flex flex-col relative">
-        {/* Advanced Header */}
+        {/* Header */}
         <motion.div
-          style={{ y: headerY }}
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-header p-4 lg:p-6 relative z-10"
@@ -290,20 +264,17 @@ function App() {
               >
                 <Menu size={20} />
               </motion.button>
-              
-              {/* Advanced Search */}
-              <div className="relative">
+
+              {/* Search */}
+              <div className="relative hidden sm:block">
                 <motion.div
-                  animate={{ 
-                    width: searchFocused ? 400 : 300,
-                    scale: searchFocused ? 1.02 : 1
-                  }}
+                  animate={{ width: searchFocused ? 400 : 300 }}
                   className="relative"
                 >
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
                   <input
                     type="text"
-                    placeholder="Search everything with AI..."
+                    placeholder="Search your knowledge base..."
                     value={filter.searchQuery}
                     onChange={(e) => setFilter({ ...filter, searchQuery: e.target.value })}
                     onFocus={() => setSearchFocused(true)}
@@ -311,9 +282,7 @@ function App() {
                     className="w-full pl-12 pr-16 py-3 glass-input rounded-xl text-primary placeholder-muted transition-all duration-200"
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
-                    <div className={`hidden sm:flex items-center gap-1 text-muted text-xs px-2 py-1 rounded-md ${
-                      settings.theme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-200/50'
-                    }`}>
+                    <div className={`hidden sm:flex items-center gap-1 text-muted text-xs px-2 py-1 rounded-md ${isDark ? 'bg-gray-800/50' : 'bg-gray-200/50'}`}>
                       <Command size={10} />
                       <span>K</span>
                     </div>
@@ -333,24 +302,17 @@ function App() {
 
               {/* View Switcher */}
               <div className="hidden sm:flex items-center gap-1 glass-button rounded-xl p-1">
-                {[
-                  { id: 'timeline', icon: Clock, label: 'Timeline' },
-                  { id: 'analytics', icon: BarChart3, label: 'Analytics' },
-                  { id: 'insights', icon: Brain, label: 'Insights' },
-                  { id: 'search', icon: Telescope, label: 'Explore' },
-                ].map((view) => {
+                {viewSwitcher.map((view) => {
                   const IconComponent = view.icon;
                   return (
                     <motion.button
                       key={view.id}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => setActiveView(view.id as any)}
+                      onClick={() => setActiveView(view.id)}
                       className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-medium ${
-                        activeView === view.id && view.id === 'timeline'
+                        activeView === view.id
                           ? 'bg-black text-white dark:bg-white dark:text-black'
-                        : activeView === view.id
-                          ? 'bg-emerald-500/20 text-emerald-600 border border-emerald-500/30'
                           : 'text-secondary hover:text-primary hover:bg-black/5 dark:hover:bg-white/5'
                       }`}
                     >
@@ -361,7 +323,7 @@ function App() {
                 })}
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
               {/* Quick Stats */}
               <div className="hidden lg:flex items-center gap-4 text-sm text-secondary">
@@ -386,42 +348,42 @@ function App() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setNotifications(!notifications)}
+                  onClick={() => setNotificationsOpen(!notificationsOpen)}
                   className="p-2 rounded-xl glass-button text-secondary hover:text-primary transition-all duration-200 relative"
                 >
                   <Bell size={18} />
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-black dark:bg-white rounded-full"
-                  />
+                  {notifications.length > 0 && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
+                  )}
                 </motion.button>
 
                 <AnimatePresence>
-                  {notifications && (
+                  {notificationsOpen && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: -10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: -10 }}
                       className="absolute right-0 top-full mt-2 w-80 glass-card rounded-2xl p-4 shadow-premium z-50"
                     >
-                      <h3 className="text-primary font-semibold mb-3">Notifications</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3 p-3 glass-button rounded-xl">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full mt-2" />
-                          <div>
-                            <p className="text-primary text-sm">AI processed 5 new items</p>
-                            <p className="text-muted text-xs">2 minutes ago</p>
-                          </div>
+                      <h3 className="text-primary font-semibold mb-3">Reminders</h3>
+                      {notifications.length === 0 ? (
+                        <p className="text-secondary text-sm py-4 text-center">
+                          No reminders. Add a note mentioning a deadline or follow-up and
+                          supermind will remind you here.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {notifications.map((n) => (
+                            <div key={n.id} className="flex items-start gap-3 p-3 glass-button rounded-xl">
+                              <div className={`w-2 h-2 ${n.color} rounded-full mt-2 flex-shrink-0`} />
+                              <div className="min-w-0">
+                                <p className="text-primary text-sm truncate">{n.text}</p>
+                                <p className="text-muted text-xs">{n.detail}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex items-start gap-3 p-3 glass-button rounded-xl">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                          <div>
-                            <p className="text-primary text-sm">Weekly summary ready</p>
-                            <p className="text-muted text-xs">1 hour ago</p>
-                          </div>
-                        </div>
-                      </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -450,10 +412,17 @@ function App() {
                       <div className="grid grid-cols-2 gap-2">
                         {[
                           { icon: Plus, label: 'Add Content', action: () => setUploadModalOpen(true) },
-                          { icon: Camera, label: 'Capture', action: () => {} },
-                          { icon: Mic, label: 'Record', action: () => {} },
-                          { icon: Download, label: 'Export', action: () => {} },
-                        ].map((action, index) => (
+                          {
+                            icon: Download,
+                            label: 'Export All',
+                            action: () => {
+                              exportContent();
+                              toast.success('Export downloaded');
+                            },
+                          },
+                          { icon: Settings, label: 'Settings', action: () => setSettingsModalOpen(true) },
+                          { icon: Brain, label: 'Insights', action: () => setActiveView('insights') },
+                        ].map((action) => (
                           <motion.button
                             key={action.label}
                             whileHover={{ scale: 1.05 }}
@@ -474,79 +443,62 @@ function App() {
                 </AnimatePresence>
               </div>
 
-              {/* User Menu */}
-              <div className="flex items-center gap-3">
-                <motion.div
-                  whileHover={{ scale: 1.05 }}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow-lg ${
-                    settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
-                  }`}
-                >
-                  {user?.name?.[0] || 'U'}
-                </motion.div>
-              </div>
+              {/* User Avatar */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                onClick={() => setActiveView('profile')}
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold shadow-lg ${
+                  isDark ? 'bg-white text-black' : 'bg-black text-white'
+                }`}
+              >
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </motion.button>
             </div>
           </div>
 
           {/* Active Filters Bar */}
           <AnimatePresence>
-            {(filter.contentType || filter.tags.length > 0 || filter.category !== 'all') && (
+            {(filter.contentType || filter.tags.length > 0 || filter.category !== 'all' || filter.favoritesOnly) && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`flex flex-wrap gap-2 mt-4 pt-4 border-t ${
-                  settings.theme === 'dark' ? 'border-white/10' : 'border-black/10'
-                }`}
+                className={`flex flex-wrap gap-2 mt-4 pt-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'}`}
               >
                 {filter.category !== 'all' && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-emerald-600 text-sm border border-emerald-500/30"
-                  >
+                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-emerald-600 text-sm border border-emerald-500/30">
                     Category: {filter.category}
-                    <button
-                      onClick={() => setFilter({ ...filter, category: 'all' })}
-                      className="hover:text-emerald-500"
-                    >
+                    <button onClick={() => setFilter({ ...filter, category: 'all' })} className="hover:text-emerald-500">
                       <X size={12} />
                     </button>
-                  </motion.span>
+                  </span>
                 )}
                 {filter.contentType && (
-                  <motion.span
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-blue-600 text-sm border border-blue-500/30"
-                  >
+                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-blue-600 text-sm border border-blue-500/30">
                     Type: {filter.contentType}
-                    <button
-                      onClick={() => setFilter({ ...filter, contentType: '' })}
-                      className="hover:text-blue-500"
-                    >
+                    <button onClick={() => setFilter({ ...filter, contentType: '' })} className="hover:text-blue-500">
                       <X size={12} />
                     </button>
-                  </motion.span>
+                  </span>
+                )}
+                {filter.favoritesOnly && (
+                  <span className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-yellow-600 text-sm border border-yellow-500/30">
+                    Favorites only
+                    <button onClick={() => setFilter({ ...filter, favoritesOnly: false })} className="hover:text-yellow-500">
+                      <X size={12} />
+                    </button>
+                  </span>
                 )}
                 {filter.tags.map(tag => (
-                  <motion.span
-                    key={tag}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-purple-600 text-sm border border-purple-500/30"
-                  >
+                  <span key={tag} className="inline-flex items-center gap-2 px-3 py-1 glass-button rounded-full text-purple-600 text-sm border border-purple-500/30">
                     Tag: {tag}
                     <button
-                      onClick={() => setFilter({ 
-                        ...filter, 
-                        tags: filter.tags.filter(t => t !== tag) 
-                      })}
+                      onClick={() => setFilter({ ...filter, tags: filter.tags.filter(t => t !== tag) })}
                       className="hover:text-purple-500"
                     >
                       <X size={12} />
                     </button>
-                  </motion.span>
+                  </span>
                 ))}
               </motion.div>
             )}
@@ -564,161 +516,116 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
-                {/* Home Content */}
-                <div className="relative overflow-hidden">
-                  {/* Animated Background */}
-                  <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="relative p-8 lg:p-12">
+                  <div className="relative z-10 text-center max-w-4xl mx-auto">
                     <motion.div
-                      animate={{ 
-                        rotate: 360,
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{ 
-                        rotate: { duration: 50, repeat: Infinity, ease: "linear" },
-                        scale: { duration: 8, repeat: Infinity, ease: "easeInOut" },
-                      }}
-                      className={`absolute -top-40 -right-40 w-96 h-96 rounded-full blur-3xl ${
-                        settings.theme === 'dark' 
-                          ? 'bg-gradient-to-br from-emerald-500/10 via-blue-500/10 to-purple-500/10' 
-                          : 'bg-gradient-to-br from-emerald-500/5 via-blue-500/5 to-purple-500/5'
-                      }`}
-                    />
-                    <motion.div
-                      animate={{ 
-                        rotate: -360,
-                        scale: [1, 1.2, 1],
-                      }}
-                      transition={{ 
-                        rotate: { duration: 60, repeat: Infinity, ease: "linear" },
-                        scale: { duration: 10, repeat: Infinity, ease: "easeInOut" },
-                      }}
-                      className={`absolute top-40 -left-40 w-96 h-96 rounded-full blur-3xl ${
-                        settings.theme === 'dark'
-                          ? 'bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10'
-                          : 'bg-gradient-to-br from-purple-500/5 via-pink-500/5 to-orange-500/5'
-                      }`}
-                    />
-                  </div>
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="inline-flex items-center gap-2 px-6 py-3 glass rounded-full mb-8"
+                    >
+                      <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center">
+                        <Sparkles className="text-white" size={12} />
+                      </div>
+                      <span className="text-primary font-medium">
+                        Welcome back, {user?.name?.split(' ')[0] || 'friend'}.
+                      </span>
+                    </motion.div>
 
-                  {/* Welcome Section */}
-                  <div className="relative p-8 lg:p-12">
-                    <div className="relative z-10 text-center max-w-4xl mx-auto">
-                      {/* Welcome Badge */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="inline-flex items-center gap-2 px-6 py-3 glass rounded-full mb-8"
+                    <motion.h1
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className="text-5xl lg:text-7xl font-bold mb-6"
+                    >
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-white dark:via-emerald-400 dark:to-blue-400">
+                        supermind.
+                      </span>
+                    </motion.h1>
+
+                    <motion.p
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-xl lg:text-2xl text-secondary mb-12 max-w-3xl mx-auto leading-relaxed"
+                    >
+                      {content.length === 0
+                        ? 'Your second brain is empty. Capture your first thought, link, or file.'
+                        : `${content.length} item${content.length !== 1 ? 's' : ''} in your knowledge base — all stored privately on this device.`}
+                    </motion.p>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
+                    >
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setUploadModalOpen(true)}
+                        className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-lg flex items-center gap-3 ${
+                          isDark ? 'bg-white text-black hover:bg-gray-100' : 'bg-black text-white hover:bg-gray-900'
+                        }`}
                       >
+                        <Plus size={20} />
+                        {content.length === 0 ? 'Add Your First Item' : 'Add Content'}
+                      </motion.button>
+
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setActiveView('timeline')}
+                        className="px-8 py-4 glass rounded-2xl font-semibold text-lg text-primary transition-all duration-200 shadow-lg flex items-center gap-3"
+                      >
+                        <Eye size={20} />
+                        Browse Timeline
+                      </motion.button>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 40 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto"
+                    >
+                      {[
+                        {
+                          icon: Shield,
+                          title: settings.security.encryptionEnabled ? 'Encrypted' : 'Local-First',
+                          desc: settings.security.encryptionEnabled
+                            ? 'AES-256 encryption at rest'
+                            : 'Data never leaves your device',
+                          gradient: 'from-emerald-500 to-green-500',
+                        },
+                        {
+                          icon: Zap,
+                          title: 'Instant Search',
+                          desc: 'Fuzzy search across everything',
+                          gradient: 'from-yellow-500 to-orange-500',
+                        },
+                        {
+                          icon: Brain,
+                          title: 'Auto-Organized',
+                          desc: 'Tags & summaries on-device',
+                          gradient: 'from-purple-500 to-pink-500',
+                        },
+                      ].map((feature, index) => (
                         <motion.div
-                          animate={{ rotate: 360 }}
-                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                          className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center"
+                          key={feature.title}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.5 + index * 0.1 }}
+                          whileHover={{ scale: 1.05, y: -5 }}
+                          className="glass rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300"
                         >
-                          <Sparkles className="text-white" size={12} />
+                          <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mx-auto mb-4`}>
+                            <feature.icon className="text-white" size={24} />
+                          </div>
+                          <h3 className="text-lg font-semibold text-primary mb-2">{feature.title}</h3>
+                          <p className="text-secondary text-sm">{feature.desc}</p>
                         </motion.div>
-                        <span className="text-primary font-medium">Welcome to supermind.</span>
-                      </motion.div>
-
-                      {/* Main Heading */}
-                      <motion.h1
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="text-5xl lg:text-7xl font-bold mb-6"
-                      >
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-emerald-600 to-blue-600 dark:from-white dark:via-emerald-400 dark:to-blue-400">
-                          supermind.
-                        </span>
-                      </motion.h1>
-
-                      {/* Subtitle */}
-                      <motion.p
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.4 }}
-                        className="text-xl lg:text-2xl text-secondary mb-12 max-w-3xl mx-auto leading-relaxed"
-                      >
-                        Capture, organize, and rediscover everything with AI-powered automation. Your universal second brain for the digital age.
-                      </motion.p>
-
-                      {/* Action Buttons */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 }}
-                        className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
-                      >
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => setUploadModalOpen(true)}
-                          className={`px-8 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 shadow-lg flex items-center gap-3 ${
-                            settings.theme === 'dark' 
-                              ? 'bg-white text-black hover:bg-gray-100' 
-                              : 'bg-black text-white hover:bg-gray-900'
-                          }`}
-                        >
-                          <Plus size={20} />
-                          Add Your First Item
-                        </motion.button>
-                        
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            // Show features or explore functionality
-                          }}
-                          className="px-8 py-4 glass rounded-2xl font-semibold text-lg text-primary transition-all duration-200 shadow-lg flex items-center gap-3"
-                        >
-                          <Eye size={20} />
-                          Explore Features
-                        </motion.button>
-                      </motion.div>
-
-                      {/* Feature Cards */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 40 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.8 }}
-                        className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto"
-                      >
-                        {[
-                          { 
-                            icon: Shield, 
-                            title: "100% Private", 
-                            desc: "End-to-end encrypted",
-                            gradient: "from-emerald-500 to-green-500"
-                          },
-                          { 
-                            icon: Zap, 
-                            title: "Lightning Fast", 
-                            desc: "Instant AI processing",
-                            gradient: "from-yellow-500 to-orange-500"
-                          },
-                          { 
-                            icon: Brain, 
-                            title: "Smart AI", 
-                            desc: "Learns your patterns",
-                            gradient: "from-purple-500 to-pink-500"
-                          }
-                        ].map((feature, index) => (
-                          <motion.div
-                            key={feature.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 1.0 + index * 0.1 }}
-                            whileHover={{ scale: 1.05, y: -5 }}
-                            className="glass rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300"
-                          >
-                            <div className={`w-12 h-12 bg-gradient-to-br ${feature.gradient} rounded-xl flex items-center justify-center mx-auto mb-4`}>
-                              <feature.icon className="text-white" size={24} />
-                            </div>
-                            <h3 className="text-lg font-semibold text-primary mb-2">{feature.title}</h3>
-                            <p className="text-secondary text-sm">{feature.desc}</p>
-                          </motion.div>
-                        ))}
-                      </motion.div>
-                    </div>
+                      ))}
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
@@ -732,138 +639,26 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
-                {/* Welcome Hero Section */}
                 <AnimatePresence>
-                  {showWelcome && (
+                  {showWelcome && content.length === 0 && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95, height: 0 }}
                       className="relative overflow-hidden"
                     >
-                      <div className="relative p-8 lg:p-12">
-                        {/* Background Pattern */}
-                        <div className="absolute inset-0 opacity-30">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-blue-500/10 to-purple-500/10" />
-                          {[...Array(20)].map((_, i) => (
-                            <motion.div
-                              key={i}
-                              className="absolute w-1 h-1 bg-emerald-400/40 rounded-full"
-                              animate={{
-                                x: [0, Math.random() * 100 - 50],
-                                y: [0, Math.random() * 100 - 50],
-                                opacity: [0, 1, 0],
-                              }}
-                              transition={{
-                                duration: 3 + Math.random() * 2,
-                                repeat: Infinity,
-                                delay: Math.random() * 2,
-                              }}
-                              style={{
-                                left: `${Math.random() * 100}%`,
-                                top: `${Math.random() * 100}%`,
-                              }}
-                            />
-                          ))}
-                        </div>
-
-                        <div className="relative z-10 text-center max-w-4xl mx-auto">
-                          <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="mb-6"
-                          >
-                            <div className="inline-flex items-center gap-3 px-6 py-3 glass-button rounded-full mb-6">
-                              <motion.div
-                                animate={{ rotate: 360 }}
-                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-blue-500 rounded-full flex items-center justify-center"
-                              >
-                                <Sparkles className="text-white" size={16} />
-                              </motion.div>
-                              <span className="text-primary font-semibold">Welcome to supermind.</span>
-                            </div>
-                          </motion.div>
-
-                          <motion.h1
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.3 }}
-                            className="text-4xl lg:text-6xl font-bold text-primary mb-6 leading-tight"
-                          >
-                            Your AI-Powered
-                            <br />
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-blue-600 dark:from-emerald-400 dark:to-blue-400">
-                              Second Brain
-                            </span>
-                          </motion.h1>
-
-                          <motion.p
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.4 }}
-                            className="text-xl text-secondary mb-8 max-w-2xl mx-auto leading-relaxed"
-                          >
-                            Capture, organize, and rediscover everything with AI-powered automation. 
-                            Your universal knowledge companion for the digital age.
-                          </motion.p>
-
-                          <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.5 }}
-                            className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8"
-                          >
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setUploadModalOpen(true)}
-                              className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-emerald-500/25 flex items-center gap-3"
-                            >
-                              <Plus size={20} />
-                              Add Your First Item
-                            </motion.button>
-                            
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => setShowWelcome(false)}
-                              className="px-6 py-4 glass-button text-secondary hover:text-primary rounded-2xl transition-all duration-200 flex items-center gap-2"
-                            >
-                              <Eye size={18} />
-                              Explore Features
-                            </motion.button>
-                          </motion.div>
-
-                          {/* Quick Stats */}
-                          <motion.div
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
-                            className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-2xl mx-auto"
-                          >
-                            {[
-                              { icon: Shield, label: "100% Private", desc: "End-to-end encrypted" },
-                              { icon: Zap, label: "Lightning Fast", desc: "Instant AI processing" },
-                              { icon: Brain, label: "Smart AI", desc: "Learns your patterns" }
-                            ].map((stat, index) => (
-                              <motion.div
-                                key={stat.label}
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{ delay: 0.7 + index * 0.1 }}
-                                className="glass-button rounded-2xl p-6 text-center hover:scale-105 transition-all duration-300"
-                              >
-                                <stat.icon className="text-emerald-500 mx-auto mb-3" size={32} />
-                                <div className="text-lg font-bold text-primary mb-1">{stat.label}</div>
-                                <div className="text-sm text-secondary">{stat.desc}</div>
-                              </motion.div>
-                            ))}
-                          </motion.div>
-                        </div>
-
-                        {/* Dismiss Button */}
+                      <div className="relative p-8 lg:p-12 text-center">
+                        <h2 className="text-3xl font-bold text-primary mb-4">Your timeline is empty</h2>
+                        <p className="text-secondary mb-6">Everything you save will show up here, newest first.</p>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => setUploadModalOpen(true)}
+                          className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg inline-flex items-center gap-3"
+                        >
+                          <Plus size={20} />
+                          Add Your First Item
+                        </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
@@ -877,15 +672,12 @@ function App() {
                   )}
                 </AnimatePresence>
 
-                {/* Main Timeline Content */}
-                <div className={showWelcome ? 'pt-0' : 'pt-6'}>
-                  <Timeline
-                    content={content}
-                    filter={filter}
-                    onToggleFavorite={toggleFavorite}
-                    onFilterChange={setFilter}
-                  />
-                </div>
+                <Timeline
+                  content={content}
+                  filter={filter}
+                  onToggleFavorite={toggleFavorite}
+                  onFilterChange={setFilter}
+                />
               </motion.div>
             )}
 
@@ -903,29 +695,25 @@ function App() {
               </motion.div>
             )}
 
-            {activeView === 'search' && (
+            {activeView === 'insights' && (
               <motion.div
-                key="search"
+                key="insights"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="h-full p-6 overflow-y-auto custom-scrollbar"
               >
-                <div className="max-w-6xl mx-auto space-y-6">
+                <div className="max-w-6xl mx-auto space-y-6 pb-24">
                   <div className="text-center mb-8">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.3 }}
-                      className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                    >
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
                       <Brain className="text-white" size={32} />
-                    </motion.div>
-                    <h2 className="text-3xl font-bold text-primary mb-2">AI Insights</h2>
-                    <p className="text-secondary">Discover patterns and connections in your knowledge</p>
+                    </div>
+                    <h2 className="text-3xl font-bold text-primary mb-2">Insights</h2>
+                    <p className="text-secondary">Patterns and connections computed from your own content — right here on your device</p>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Knowledge Graph */}
+                    {/* Tag Connections */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -933,21 +721,30 @@ function App() {
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <Network className="text-emerald-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Knowledge Graph</h3>
+                        <h3 className="text-xl font-semibold text-primary">Tag Connections</h3>
                       </div>
-                      <div className={`h-64 rounded-xl flex items-center justify-center ${
-                        settings.theme === 'dark' 
-                          ? 'bg-gradient-to-br from-emerald-500/10 to-blue-500/10' 
-                          : 'bg-gradient-to-br from-emerald-500/5 to-blue-500/5'
-                      }`}>
-                        <div className="text-center">
-                          <Orbit className="text-emerald-400 mx-auto mb-2" size={48} />
-                          <p className="text-secondary">Interactive knowledge visualization</p>
+                      {insights.tagConnections.length === 0 ? (
+                        <p className="text-secondary text-sm py-8 text-center">
+                          Add more content — connections appear when tags co-occur across items.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {insights.tagConnections.map((conn) => (
+                            <div key={`${conn.tagA}-${conn.tagB}`} className="flex items-center justify-between p-3 glass-button rounded-xl">
+                              <div className="flex items-center gap-2 text-sm min-w-0">
+                                <TagIcon size={12} className="text-emerald-400 flex-shrink-0" />
+                                <span className="text-primary truncate">{conn.tagA}</span>
+                                <span className="text-muted">↔</span>
+                                <span className="text-primary truncate">{conn.tagB}</span>
+                              </div>
+                              <span className="text-muted text-xs flex-shrink-0 ml-2">{conn.count} items</span>
+                            </div>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </motion.div>
 
-                    {/* Content Recommendations */}
+                    {/* Related Content */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -956,41 +753,33 @@ function App() {
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <Sparkles className="text-purple-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Smart Recommendations</h3>
+                        <h3 className="text-xl font-semibold text-primary">Rediscover</h3>
                       </div>
-                      <div className="space-y-3">
-                        {[
-                          { title: 'Related to your productivity research', type: 'article', confidence: 95 },
-                          { title: 'Similar health content you might like', type: 'video', confidence: 87 },
-                          { title: 'Trending in your education category', type: 'link', confidence: 82 },
-                        ].map((rec, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2 + index * 0.1 }}
-                            className="flex items-center justify-between p-3 glass-button rounded-xl"
-                          >
-                            <div>
-                              <p className="text-primary text-sm">{rec.title}</p>
-                              <p className="text-muted text-xs">{rec.confidence}% match</p>
+                      {insights.recommendations.length === 0 ? (
+                        <p className="text-secondary text-sm py-8 text-center">
+                          As your library grows, items related to your recent saves will surface here.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {insights.recommendations.map((rec) => (
+                            <div key={rec.id} className="flex items-center justify-between p-3 glass-button rounded-xl gap-3">
+                              <div className="min-w-0">
+                                <p className="text-primary text-sm truncate">{rec.title}</p>
+                                <p className="text-muted text-xs truncate">{rec.reason}</p>
+                              </div>
+                              <div className={`w-12 h-2 rounded-full overflow-hidden flex-shrink-0 ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}>
+                                <div
+                                  className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                  style={{ width: `${rec.match}%` }}
+                                />
+                              </div>
                             </div>
-                            <div className={`w-12 h-2 rounded-full overflow-hidden ${
-                              settings.theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'
-                            }`}>
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${rec.confidence}%` }}
-                                transition={{ delay: 0.5 + index * 0.1, duration: 1 }}
-                                className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-                              />
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </motion.div>
 
-                    {/* Learning Patterns */}
+                    {/* Your Patterns */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -999,25 +788,27 @@ function App() {
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <TrendingUp className="text-blue-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">Learning Patterns</h3>
+                        <h3 className="text-xl font-semibold text-primary">Your Patterns</h3>
                       </div>
                       <div className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-secondary">Peak learning time</span>
-                          <span className="text-blue-400 font-semibold">2-4 PM</span>
+                          <span className="text-secondary">Most active time</span>
+                          <span className="text-blue-400 font-semibold">{insights.peakTime ?? 'Not enough data'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-secondary">Favorite content type</span>
-                          <span className="text-blue-400 font-semibold">Articles</span>
+                          <span className="text-secondary">Most saved type</span>
+                          <span className="text-blue-400 font-semibold capitalize">{insights.favoriteType ?? '—'}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-secondary">Weekly growth</span>
-                          <span className="text-emerald-400 font-semibold">+23%</span>
+                          <span className="text-secondary">Week-over-week</span>
+                          <span className={`font-semibold ${insights.weeklyGrowth !== null && insights.weeklyGrowth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {insights.weeklyGrowth === null ? '—' : `${insights.weeklyGrowth >= 0 ? '+' : ''}${insights.weeklyGrowth}%`}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
 
-                    {/* AI Suggestions */}
+                    {/* Suggestions */}
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -1026,17 +817,15 @@ function App() {
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <Lightbulb className="text-yellow-400" size={24} />
-                        <h3 className="text-xl font-semibold text-primary">AI Suggestions</h3>
+                        <h3 className="text-xl font-semibold text-primary">Suggestions</h3>
                       </div>
                       <div className="space-y-3">
-                        <div className="p-3 glass-button rounded-xl">
-                          <p className="text-primary text-sm mb-1">Create a "Morning Routine" collection</p>
-                          <p className="text-muted text-xs">Based on your health and productivity content</p>
-                        </div>
-                        <div className="p-3 glass-button rounded-xl">
-                          <p className="text-primary text-sm mb-1">Set reminder for weekly review</p>
-                          <p className="text-muted text-xs">You haven't reviewed content in 5 days</p>
-                        </div>
+                        {insights.suggestions.map((s) => (
+                          <div key={s.title} className="p-3 glass-button rounded-xl">
+                            <p className="text-primary text-sm mb-1">{s.title}</p>
+                            <p className="text-muted text-xs">{s.detail}</p>
+                          </div>
+                        ))}
                       </div>
                     </motion.div>
                   </div>
@@ -1052,50 +841,45 @@ function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="h-full p-6 overflow-y-auto custom-scrollbar"
               >
-                <div className="max-w-2xl mx-auto">
+                <div className="max-w-2xl mx-auto pb-24">
                   <div className="text-center mb-8">
-                    <motion.div
-                      whileHover={{ scale: 1.1 }}
-                      transition={{ duration: 0.3 }}
-                      className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${
-                        settings.theme === 'dark' ? 'bg-white' : 'bg-black'
-                      }`}
-                    >
-                      <User className={`${settings.theme === 'dark' ? 'text-black' : 'text-white'}`} size={32} />
-                    </motion.div>
+                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 ${isDark ? 'bg-white' : 'bg-black'}`}>
+                      <User className={isDark ? 'text-black' : 'text-white'} size={32} />
+                    </div>
                     <h2 className="text-3xl font-bold text-primary mb-2">Profile & Settings</h2>
-                    <p className="text-secondary">Manage your account and preferences</p>
+                    <p className="text-secondary">Manage your local profile and preferences</p>
                   </div>
 
-                  {/* User Profile Card */}
                   <div className="glass rounded-2xl p-6 mb-6">
-                    <div className="flex items-center gap-4 mb-6">
-                      <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${
-                        settings.theme === 'dark' ? 'bg-white' : 'bg-black'
-                      }`}>
-                        <span className={`font-bold text-xl ${
-                          settings.theme === 'dark' ? 'text-black' : 'text-white'
-                        }`}>{user?.name?.[0] || 'U'}</span>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg ${isDark ? 'bg-white' : 'bg-black'}`}>
+                        <span className={`font-bold text-xl ${isDark ? 'text-black' : 'text-white'}`}>
+                          {user?.name?.[0]?.toUpperCase() || 'U'}
+                        </span>
                       </div>
                       <div className="flex-1">
                         <h3 className="text-xl font-bold text-primary">{user?.name || 'User'}</h3>
-                        <p className="text-secondary">{user?.email || 'user@example.com'}</p>
-                        <div className={`inline-block px-3 py-1 rounded-full text-sm mt-2 ${
-                          settings.theme === 'dark' ? 'bg-white/10 text-white' : 'bg-black/10 text-black'
-                        }`}>
-                          {user?.subscription || 'Free'} Plan
+                        {user?.email && <p className="text-secondary">{user.email}</p>}
+                        <div className={`inline-block px-3 py-1 rounded-full text-sm mt-2 ${isDark ? 'bg-white/10 text-white' : 'bg-black/10 text-black'}`}>
+                          Local profile · {content.length} items
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
                   <div className="space-y-4">
                     {[
                       { icon: Settings, label: 'Settings', action: () => setSettingsModalOpen(true) },
-                      { icon: Download, label: 'Export Data', action: () => {} },
-                      { icon: Shield, label: 'Privacy & Security', action: () => {} },
-                      { icon: Bell, label: 'Notifications', action: () => {} },
+                      {
+                        icon: Download,
+                        label: 'Export Data',
+                        action: () => {
+                          exportContent();
+                          toast.success('Export downloaded');
+                        },
+                      },
+                      { icon: Shield, label: 'Privacy & Security', action: () => setSettingsModalOpen(true, 'security') },
+                      { icon: CalendarClock, label: 'Notifications & Reminders', action: () => setSettingsModalOpen(true, 'notifications') },
                     ].map((item) => (
                       <motion.button
                         key={item.label}
@@ -1117,241 +901,75 @@ function App() {
         </div>
       </div>
 
-      {/* Enhanced Floating Add Button */}
+      {/* Floating Add Button (desktop) */}
       {activeView !== 'home' && (
         <motion.div
-          className="fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-40"
+          className="hidden sm:block fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-40"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
         >
           <motion.button
             onClick={() => setUploadModalOpen(true)}
-            className="relative w-16 h-16 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 text-white rounded-2xl shadow-premium transition-all duration-300 flex items-center justify-center group overflow-hidden"
-            animate={{
-              boxShadow: [
-                "0 0 20px rgba(16, 185, 129, 0.3)",
-                "0 0 30px rgba(59, 130, 246, 0.4)",
-                "0 0 20px rgba(16, 185, 129, 0.3)",
-              ]
-            }}
-            transition={{ duration: 3, repeat: Infinity }}
+            className="relative w-16 h-16 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 text-white rounded-2xl shadow-premium transition-all duration-300 flex items-center justify-center"
           >
-            <motion.div
-              whileHover={{ rotate: 180 }}
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            />
-            <Plus size={24} className="relative z-10" />
-            <motion.div
-              className="absolute inset-0 bg-white/20 rounded-2xl"
-              initial={{ scale: 0, opacity: 0 }}
-              whileHover={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            />
+            <Plus size={24} />
           </motion.button>
         </motion.div>
       )}
 
       {/* Mobile Navigation */}
-      <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
-        <div 
-          className="flex items-center justify-center gap-8 py-4 px-8 rounded-full backdrop-blur-xl border shadow-2xl"
+      <div className="sm:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
+        <div
+          className="flex items-center justify-center gap-4 py-3 px-6 rounded-full backdrop-blur-xl border shadow-2xl"
           style={{
-            background: settings.theme === 'dark' 
-              ? 'rgba(255, 255, 255, 0.1)' 
-              : 'rgba(0, 0, 0, 0.1)',
-            borderColor: settings.theme === 'dark' 
-              ? 'rgba(255, 255, 255, 0.2)' 
-              : 'rgba(0, 0, 0, 0.2)'
+            background: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)',
           }}
         >
-          {/* Home */}
-          <motion.button
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveView('home')}
-            className={`flex flex-col items-center gap-1 p-3 transition-all duration-300 ${
-              activeView === 'home' ? 'text-primary' : 'text-secondary'
-            }`}
-          >
-            <motion.div
-              animate={activeView === 'home' ? { scale: [1, 1.2, 1] } : {}}
-              transition={{ duration: 0.5 }}
-            >
-              <Grid size={24} strokeWidth={activeView === 'home' ? 2.5 : 2} />
-            </motion.div>
-            <span className={`text-xs font-medium ${activeView === 'home' ? 'text-primary' : 'text-secondary'}`}>
-              Home
-            </span>
-          </motion.button>
-          
-          {/* Timeline */}
-          <motion.button
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveView('timeline')}
-            className={`flex flex-col items-center gap-1 p-3 transition-all duration-300 ${
-              activeView === 'timeline' ? 'text-primary' : 'text-secondary'
-            }`}
-          >
-            <motion.div
-              animate={activeView === 'timeline' ? { scale: [1, 1.2, 1] } : {}}
-              transition={{ duration: 0.5 }}
-            >
-              <Clock size={24} strokeWidth={activeView === 'timeline' ? 2.5 : 2} />
-            </motion.div>
-            <span className={`text-xs font-medium ${activeView === 'timeline' ? 'text-primary' : 'text-secondary'}`}>
-              Timeline
-            </span>
-          </motion.button>
-          
-          {/* Ultra Advanced Animated Plus Button */}
-          <motion.div className="relative">
-            {/* Outer glow ring */}
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              animate={{
-                boxShadow: [
-                  "0 0 20px rgba(16, 185, 129, 0.3)",
-                  "0 0 40px rgba(16, 185, 129, 0.6)",
-                  "0 0 60px rgba(59, 130, 246, 0.4)",
-                  "0 0 40px rgba(16, 185, 129, 0.6)",
-                  "0 0 20px rgba(16, 185, 129, 0.3)",
-                ]
-              }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
-            
+          {([
+            { id: 'home', icon: Grid, label: 'Home' },
+            { id: 'timeline', icon: Clock, label: 'Timeline' },
+          ] as const).map((nav) => (
             <motion.button
-              whileHover={{ 
-                scale: 1.2,
-                rotate: 90,
-              }}
-              whileTap={{ scale: 0.85 }}
-              onClick={() => setUploadModalOpen(true)}
-              className="relative w-20 h-20 rounded-full shadow-2xl transition-all duration-500 flex items-center justify-center overflow-hidden bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-500 text-white border-4 border-white/40"
-              animate={{
-                background: [
-                  "linear-gradient(45deg, #10b981, #3b82f6, #8b5cf6)",
-                  "linear-gradient(135deg, #3b82f6, #8b5cf6, #10b981)",
-                  "linear-gradient(225deg, #8b5cf6, #10b981, #3b82f6)",
-                  "linear-gradient(315deg, #10b981, #3b82f6, #8b5cf6)",
-                ],
-              }}
-              transition={{ 
-                background: { duration: 4, repeat: Infinity },
-                scale: { duration: 0.4 },
-                rotate: { duration: 0.6 }
-              }}
+              key={nav.id}
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setActiveView(nav.id)}
+              className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${
+                activeView === nav.id ? 'text-primary' : 'text-secondary'
+              }`}
             >
-              {/* Multiple rotating rings */}
-              <motion.div
-                className="absolute inset-1 rounded-full border-2 border-white/40"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-              />
-              <motion.div
-                className="absolute inset-2 rounded-full border border-white/20"
-                animate={{ rotate: -360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-              />
-              
-              {/* Pulsing inner circles */}
-              <motion.div
-                className="absolute inset-3 rounded-full bg-white/10"
-                animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.8, 0.3] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <motion.div
-                className="absolute inset-4 rounded-full bg-white/20"
-                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 1.5, repeat: Infinity, delay: 0.5 }}
-              />
-              
-              {/* Enhanced Plus icon */}
-              <motion.div
-                whileHover={{ rotate: 180, scale: 1.1 }}
-                transition={{ duration: 0.4 }}
-                className="relative z-10"
-              >
-                <Plus size={32} strokeWidth={3} />
-              </motion.div>
-              
-              {/* Enhanced sparkle effects */}
-              {[...Array(6)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1.5 h-1.5 rounded-full bg-white shadow-lg"
-                  style={{
-                    top: '15%',
-                    left: '15%',
-                    transformOrigin: '32px 32px',
-                  }}
-                  animate={{
-                    rotate: [0, 360],
-                    scale: [0, 1.5, 0],
-                    opacity: [0, 1, 0],
-                  }}
-                  transition={{
-                    duration: 2.5,
-                    repeat: Infinity,
-                    delay: i * 0.4,
-                    ease: "easeInOut"
-                  }}
-                />
-              ))}
-              
-              {/* Magnetic attraction effect */}
-              <motion.div
-                className="absolute inset-0 rounded-full border-2 border-white/0"
-                whileHover={{
-                  borderColor: "rgba(255, 255, 255, 0.6)",
-                  scale: 1.1,
-                }}
-                transition={{ duration: 0.3 }}
-              />
+              <nav.icon size={22} strokeWidth={activeView === nav.id ? 2.5 : 2} />
+              <span className="text-xs font-medium">{nav.label}</span>
             </motion.button>
-          </motion.div>
-          
-          {/* Explore */}
+          ))}
+
           <motion.button
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveView('search')}
-            className={`flex flex-col items-center gap-1 p-3 transition-all duration-300 ${
-              activeView === 'search' ? 'text-primary' : 'text-secondary'
-            }`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setUploadModalOpen(true)}
+            className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-500 text-white border-4 border-white/40"
           >
-            <motion.div
-              animate={activeView === 'search' ? { scale: [1, 1.2, 1] } : {}}
-              transition={{ duration: 0.5 }}
-            >
-              <Telescope size={24} strokeWidth={activeView === 'search' ? 2.5 : 2} />
-            </motion.div>
-            <span className={`text-xs font-medium ${activeView === 'search' ? 'text-primary' : 'text-secondary'}`}>
-              Explore
-            </span>
+            <Plus size={26} strokeWidth={3} />
           </motion.button>
-          
-          {/* Profile */}
-          <motion.button
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setActiveView('profile')}
-            className={`flex flex-col items-center gap-1 p-3 transition-all duration-300 ${
-              activeView === 'profile' ? 'text-primary' : 'text-secondary'
-            }`}
-          >
-            <motion.div
-              animate={activeView === 'profile' ? { scale: [1, 1.2, 1] } : {}}
-              transition={{ duration: 0.5 }}
+
+          {([
+            { id: 'insights', icon: Brain, label: 'Insights' },
+            { id: 'profile', icon: User, label: 'Profile' },
+          ] as const).map((nav) => (
+            <motion.button
+              key={nav.id}
+              whileHover={{ scale: 1.1, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setActiveView(nav.id)}
+              className={`flex flex-col items-center gap-1 p-2 transition-all duration-300 ${
+                activeView === nav.id ? 'text-primary' : 'text-secondary'
+              }`}
             >
-              <User size={24} strokeWidth={activeView === 'profile' ? 2.5 : 2} />
-            </motion.div>
-            <span className={`text-xs font-medium ${activeView === 'profile' ? 'text-primary' : 'text-secondary'}`}>
-              Profile
-            </span>
-          </motion.button>
+              <nav.icon size={22} strokeWidth={activeView === nav.id ? 2.5 : 2} />
+              <span className="text-xs font-medium">{nav.label}</span>
+            </motion.button>
+          ))}
         </div>
       </div>
 
@@ -1361,23 +979,25 @@ function App() {
         onClose={() => setUploadModalOpen(false)}
         onAddContent={addContent}
       />
-      
+
       {isEncryptionModalOpen && (
-        <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${
-          settings.theme === 'dark' ? 'bg-black/60' : 'bg-white/60'
-        }`}>
-          <div className="glass-card rounded-2xl p-8 max-w-md w-full">
+        <div className={`fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 ${isDark ? 'bg-black/60' : 'bg-white/60'}`}>
+          <div className="glass-card rounded-2xl p-8 max-w-md w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setEncryptionModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-lg text-secondary hover:text-primary transition-colors"
+            >
+              <X size={18} />
+            </button>
             <EncryptionSetup onComplete={handleEncryptionSetup} />
           </div>
         </div>
       )}
-      
+
       <SettingsModal />
-      
-      {settings.security.encryptionEnabled && (
-        <SecurityBadge variant="floating" />
-      )}
-      
+
+      {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
+
       <Toast />
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Eye, EyeOff, Fingerprint, Key } from 'lucide-react';
+import { Shield, Lock, EyeOff, HardDrive } from 'lucide-react';
 
 interface SecurityBadgeProps {
   variant?: 'compact' | 'detailed' | 'floating';
@@ -32,11 +32,11 @@ export default function SecurityBadge({ variant = 'compact', showDetails = false
               <Shield className="text-emerald-400" size={20} />
             </motion.div>
             <div>
-              <div className="text-white font-semibold text-sm">End-to-End Encrypted</div>
-              <div className="text-emerald-400 text-xs">Zero-Knowledge Security</div>
+              <div className="text-white font-semibold text-sm">Encrypted at Rest</div>
+              <div className="text-emerald-400 text-xs">Local-Only Storage</div>
             </div>
           </div>
-          
+
           {isHovered && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -44,7 +44,8 @@ export default function SecurityBadge({ variant = 'compact', showDetails = false
               className="mt-3 pt-3 border-t border-gray-700/50"
             >
               <div className="text-xs text-gray-400">
-                Your data is encrypted on your device before it ever leaves. Even we can't see your content.
+                Your content is encrypted with AES-256-GCM before it is written to this
+                device's storage. The key is derived from your passphrase and never stored.
               </div>
             </motion.div>
           )}
@@ -61,37 +62,37 @@ export default function SecurityBadge({ variant = 'compact', showDetails = false
             <Shield className="text-emerald-400" size={24} />
           </div>
           <div>
-            <h3 className="text-white font-bold text-lg">Military-Grade Security</h3>
-            <p className="text-emerald-400 text-sm">End-to-End Encrypted • Zero-Knowledge Architecture</p>
+            <h3 className="text-white font-bold text-lg">Local-First Security</h3>
+            <p className="text-emerald-400 text-sm">Your data never leaves this device</p>
           </div>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl">
             <Lock className="text-blue-400" size={16} />
             <div>
-              <div className="text-white text-sm font-medium">AES-256 Encryption</div>
-              <div className="text-gray-400 text-xs">Client-side encryption</div>
+              <div className="text-white text-sm font-medium">AES-256-GCM</div>
+              <div className="text-gray-400 text-xs">Encryption at rest</div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl">
-            <EyeOff className="text-purple-400" size={16} />
+            <HardDrive className="text-purple-400" size={16} />
             <div>
-              <div className="text-white text-sm font-medium">Zero-Knowledge</div>
-              <div className="text-gray-400 text-xs">We can't see your data</div>
+              <div className="text-white text-sm font-medium">Local-Only</div>
+              <div className="text-gray-400 text-xs">No servers, no sync</div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3 p-3 bg-gray-800/30 rounded-xl">
-            <Fingerprint className="text-emerald-400" size={16} />
+            <EyeOff className="text-emerald-400" size={16} />
             <div>
-              <div className="text-white text-sm font-medium">Biometric Auth</div>
-              <div className="text-gray-400 text-xs">Secure access control</div>
+              <div className="text-white text-sm font-medium">Your Key Only</div>
+              <div className="text-gray-400 text-xs">Passphrase-derived</div>
             </div>
           </div>
         </div>
-        
+
         {showDetails && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
@@ -99,10 +100,10 @@ export default function SecurityBadge({ variant = 'compact', showDetails = false
             className="mt-4 pt-4 border-t border-gray-700/30"
           >
             <div className="text-sm text-gray-300 space-y-2">
-              <p>• Your content is encrypted on your device using AES-256 encryption before transmission</p>
-              <p>• Encryption keys are derived from your password and never leave your device</p>
-              <p>• Even our servers cannot decrypt your data - true zero-knowledge architecture</p>
-              <p>• All AI processing happens locally on your device to maintain privacy</p>
+              <p>• Content is encrypted with AES-256-GCM before it is written to browser storage</p>
+              <p>• The encryption key is derived from your passphrase (PBKDF2, 250k iterations) and only ever lives in memory</p>
+              <p>• There is no server: nothing is uploaded, synced, or tracked</p>
+              <p>• Tagging, summaries, and insights are computed entirely on your device</p>
             </div>
           </motion.div>
         )}
@@ -114,7 +115,7 @@ export default function SecurityBadge({ variant = 'compact', showDetails = false
   return (
     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-full">
       <Shield className="text-emerald-400" size={14} />
-      <span className="text-emerald-400 text-sm font-medium">End-to-End Encrypted</span>
+      <span className="text-emerald-400 text-sm font-medium">Encrypted at Rest</span>
     </div>
   );
 }

@@ -1,9 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { SavedContent, FilterState } from '../types';
 import ContentCard from './ContentCard';
-import VirtualizedTimeline from './advanced/VirtualizedTimeline';
-import { Search, Filter, SortDesc, Grid, List, Clock, Calendar, Star, TrendingUp, Zap, Eye, BarChart3, Layers, Sparkles, Target, Compass, Map, Route, Infinity, Brain, Network, Telescope, Microscope, Lightbulb, Puzzle, Magnet, Orbit, Waves, Globe, Database, Cpu, Activity, Heart, Coffee, Music, Camera, Video, Mic, FileText, Image, Link as LinkIcon, Headphones, Type, FileType, Tag, Bookmark, Archive, Share2, Download, Upload, Trash2, Edit3, EyeOff, Lock, Unlock, RefreshCw, ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
+import {
+  Search, Filter, Grid, List, Star, BarChart3, Layers,
+  Target, Database, Lightbulb, Download, Trash2,
+} from 'lucide-react';
 import { useSearch } from '../hooks/useSearch';
 import { useStore } from '../store/useStore';
 
@@ -15,13 +18,13 @@ interface TimelineProps {
 }
 
 export default function Timeline({ content, filter, onToggleFavorite, onFilterChange }: TimelineProps) {
-  const { deleteContent, settings } = useStore();
+  const { bulkDeleteContent, bulkToggleFavorite, exportContent, settings } = useStore();
   const [sortBy, setSortBy] = React.useState<'recent' | 'oldest' | 'favorites' | 'alphabetical'>('recent');
   const [viewMode, setViewMode] = React.useState<'grid' | 'list' | 'masonry'>('grid');
   const [selectedItems, setSelectedItems] = React.useState<string[]>([]);
   const [showFilters, setShowFilters] = React.useState(false);
   const [groupBy, setGroupBy] = React.useState<'none' | 'date' | 'category' | 'type'>('none');
-  
+
   const searchResults = useSearch(content, filter.searchQuery);
 
   const filteredContent = React.useMemo(() => {
@@ -36,12 +39,25 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
     }
 
     if (filter.tags.length > 0) {
-      filtered = filtered.filter(item => 
+      filtered = filtered.filter(item =>
         filter.tags.some(tag => item.tags.includes(tag))
       );
     }
 
-    return filtered.sort((a, b) => {
+    if (filter.favoritesOnly) {
+      filtered = filtered.filter(item => item.isFavorite);
+    }
+
+    if (filter.dateRange?.start) {
+      filtered = filtered.filter(item => item.timestamp >= filter.dateRange!.start);
+    }
+    if (filter.dateRange?.end) {
+      const end = new Date(filter.dateRange.end);
+      end.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(item => item.timestamp <= end);
+    }
+
+    return [...filtered].sort((a, b) => {
       switch (sortBy) {
         case 'oldest':
           return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
@@ -64,27 +80,28 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
     filteredContent.forEach(item => {
       let groupKey = '';
-      
+
       switch (groupBy) {
-        case 'date':
+        case 'date': {
           const date = new Date(item.timestamp);
           const today = new Date();
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          
+
           if (date.toDateString() === today.toDateString()) {
             groupKey = 'Today';
           } else if (date.toDateString() === yesterday.toDateString()) {
             groupKey = 'Yesterday';
           } else {
-            groupKey = date.toLocaleDateString('en-US', { 
-              weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric' 
+            groupKey = date.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
             });
           }
           break;
+        }
         case 'category':
           groupKey = item.category.charAt(0).toUpperCase() + item.category.slice(1);
           break;
@@ -103,8 +120,8 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
   }, [filteredContent, groupBy]);
 
   const handleSelectItem = (id: string) => {
-    setSelectedItems(prev => 
-      prev.includes(id) 
+    setSelectedItems(prev =>
+      prev.includes(id)
         ? prev.filter(item => item !== id)
         : [...prev, id]
     );
@@ -112,10 +129,31 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
   const handleSelectAll = () => {
     setSelectedItems(
-      selectedItems.length === filteredContent.length 
-        ? [] 
+      selectedItems.length === filteredContent.length
+        ? []
         : filteredContent.map(item => item.id)
     );
+  };
+
+  const handleBulkFavorite = () => {
+    bulkToggleFavorite(selectedItems);
+    toast.success(`Updated favorites for ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+    setSelectedItems([]);
+  };
+
+  const handleBulkExport = () => {
+    exportContent(selectedItems);
+    toast.success(`Exported ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+    setSelectedItems([]);
+  };
+
+  const handleBulkDelete = () => {
+    if (!window.confirm(`Delete ${selectedItems.length} selected item${selectedItems.length !== 1 ? 's' : ''}? This cannot be undone.`)) {
+      return;
+    }
+    bulkDeleteContent(selectedItems);
+    toast.success(`Deleted ${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''}`);
+    setSelectedItems([]);
   };
 
   const stats = React.useMemo(() => {
@@ -126,39 +164,51 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
       acc[item.contentType] = (acc[item.contentType] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    
+
     return { total, favorites, guides, types };
   }, [filteredContent]);
 
   const handleDismissAllGuides = () => {
     const guideIds = content.filter(c => c.metadata?.isGuide && c.metadata?.canDismiss).map(c => c.id);
-    guideIds.forEach(id => deleteContent(id));
+    bulkDeleteContent(guideIds);
     toast.success(`Dismissed ${guideIds.length} guide${guideIds.length !== 1 ? 's' : ''}`);
+  };
+
+  const setDateRange = (start?: string, end?: string) => {
+    const startDate = start ? new Date(start) : filter.dateRange?.start;
+    const endDate = end ? new Date(end) : filter.dateRange?.end;
+    if (!startDate && !endDate) {
+      onFilterChange({ ...filter, dateRange: undefined });
+    } else {
+      onFilterChange({
+        ...filter,
+        dateRange: {
+          start: startDate ?? new Date(0),
+          end: endDate ?? new Date('2100-01-01'),
+        },
+      });
+    }
   };
 
   return (
     <div className="flex-1 h-full flex flex-col">
-      {/* Enhanced Header */}
-      <motion.div 
+      {/* Header */}
+      <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="glass-header p-6"
       >
         <div className="flex items-center justify-between mb-6">
           <div>
-            <motion.h1 
+            <motion.h1
               key={filter.category}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-3xl font-bold text-primary mb-2 flex items-center gap-3"
             >
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: 999999999, ease: "linear" }}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center ${settings.theme === 'dark' ? 'bg-white' : 'bg-black'}`}
-              >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${settings.theme === 'dark' ? 'bg-white' : 'bg-black'}`}>
                 <Database className={settings.theme === 'dark' ? 'text-black' : 'text-white'} size={20} />
-              </motion.div>
+              </div>
               {filter.category === 'all' ? 'Knowledge Base' : `${filter.category.charAt(0).toUpperCase() + filter.category.slice(1)}`}
             </motion.h1>
             <div className="flex items-center gap-4 text-sm">
@@ -189,20 +239,18 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-3">
-            {/* Quick Stats */}
+            {/* Type counts */}
             <div className="hidden lg:flex items-center gap-4">
               {Object.entries(stats.types).slice(0, 3).map(([type, count]) => (
-                <motion.div
+                <div
                   key={type}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
                   className="flex items-center gap-2 px-3 py-1 glass rounded-full text-xs"
                 >
                   <div className="w-2 h-2 bg-emerald-500 rounded-full" />
                   <span className="text-secondary">{type}: {count}</span>
-                </motion.div>
+                </div>
               ))}
             </div>
 
@@ -217,7 +265,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   key={mode}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setViewMode(mode as any)}
+                  onClick={() => setViewMode(mode as typeof viewMode)}
                   className={`p-2 rounded-lg transition-all duration-200 ${
                     viewMode === mode
                       ? settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
@@ -236,7 +284,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-xl glass hover:bg-white/10 transition-all duration-200 ${
-                showFilters 
+                showFilters
                   ? settings.theme === 'dark' ? 'text-white bg-white/20' : 'text-black bg-black/20'
                   : 'text-secondary'
               }`}
@@ -247,7 +295,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
             {/* Sort Dropdown */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="px-4 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
             >
               <option value="recent">Most Recent</option>
@@ -258,7 +306,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
           </div>
         </div>
 
-        {/* Advanced Filters Panel */}
+        {/* Filters Panel */}
         <AnimatePresence>
           {showFilters && (
             <motion.div
@@ -273,7 +321,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   <label className="block text-primary font-medium mb-3">Group By</label>
                   <select
                     value={groupBy}
-                    onChange={(e) => setGroupBy(e.target.value as any)}
+                    onChange={(e) => setGroupBy(e.target.value as typeof groupBy)}
                     className="w-full px-4 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   >
                     <option value="none">No Grouping</option>
@@ -289,38 +337,59 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   <div className="flex gap-2">
                     <input
                       type="date"
+                      onChange={(e) => setDateRange(e.target.value || undefined, undefined)}
                       className="flex-1 px-3 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
                     />
                     <input
                       type="date"
+                      onChange={(e) => setDateRange(undefined, e.target.value || undefined)}
                       className="flex-1 px-3 py-2 glass-input text-primary rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 text-sm"
                     />
                   </div>
+                  {filter.dateRange && (
+                    <button
+                      onClick={() => onFilterChange({ ...filter, dateRange: undefined })}
+                      className="mt-2 text-xs text-emerald-500 hover:text-emerald-600"
+                    >
+                      Clear date range
+                    </button>
+                  )}
                 </div>
 
                 {/* Quick Filters */}
                 <div>
                   <label className="block text-primary font-medium mb-3">Quick Filters</label>
                   <div className="flex flex-wrap gap-2">
-                    {[
-                      { label: 'Favorites', icon: Star, active: false },
-                      { label: 'Recent', icon: Clock, active: false },
-                      { label: 'Unread', icon: Eye, active: false },
-                    ].map((quickFilter) => (
-                      <motion.button
-                        key={quickFilter.label}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all duration-200 ${
-                          quickFilter.active
-                            ? settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
-                            : 'glass-button text-secondary hover:text-primary'
-                        }`}
-                      >
-                        <quickFilter.icon size={14} />
-                        {quickFilter.label}
-                      </motion.button>
-                    ))}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => onFilterChange({ ...filter, favoritesOnly: !filter.favoritesOnly })}
+                      className={`flex items-center gap-2 px-3 py-1 rounded-lg text-sm transition-all duration-200 ${
+                        filter.favoritesOnly
+                          ? settings.theme === 'dark' ? 'bg-white text-black' : 'bg-black text-white'
+                          : 'glass-button text-secondary hover:text-primary'
+                      }`}
+                    >
+                      <Star size={14} />
+                      Favorites
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => onFilterChange({
+                        ...filter,
+                        category: 'all',
+                        contentType: '',
+                        tags: [],
+                        searchQuery: '',
+                        favoritesOnly: false,
+                        dateRange: undefined,
+                      })}
+                      className="flex items-center gap-2 px-3 py-1 rounded-lg text-sm glass-button text-secondary hover:text-primary transition-all duration-200"
+                    >
+                      <Filter size={14} />
+                      Clear All
+                    </motion.button>
                   </div>
                 </div>
               </div>
@@ -348,20 +417,19 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
                 </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {[
-                  { icon: Star, label: 'Favorite', color: 'text-secondary hover:text-primary' },
-                  { icon: Archive, label: 'Archive', color: 'text-secondary hover:text-primary' },
-                  { icon: Share2, label: 'Share', color: 'text-secondary hover:text-primary' },
-                  { icon: Download, label: 'Export', color: 'text-secondary hover:text-primary' },
-                  { icon: Trash2, label: 'Delete', color: 'text-secondary hover:text-primary' },
+                  { icon: Star, label: 'Toggle Favorite', action: handleBulkFavorite },
+                  { icon: Download, label: 'Export Selected', action: handleBulkExport },
+                  { icon: Trash2, label: 'Delete Selected', action: handleBulkDelete },
                 ].map((action) => (
                   <motion.button
                     key={action.label}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`p-2 rounded-lg glass-button transition-all duration-200 ${action.color}`}
+                    onClick={action.action}
+                    className="p-2 rounded-lg glass-button transition-all duration-200 text-secondary hover:text-primary"
                     title={action.label}
                   >
                     <action.icon size={16} />
@@ -381,47 +449,37 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center h-full p-8"
           >
-            <motion.div
-              animate={{ 
-                rotate: 360,
-                scale: [1, 1.1, 1],
-              }}
-              transition={{ 
-                rotate: { duration: 20, repeat: 999999999, ease: "linear" },
-                scale: { duration: 4, repeat: 999999999, ease: "easeInOut" }
-              }}
-              className={`w-32 h-32 rounded-full flex items-center justify-center mb-8 ${
-                settings.theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
-              }`}
-            >
+            <div className={`w-32 h-32 rounded-full flex items-center justify-center mb-8 ${
+              settings.theme === 'dark' ? 'bg-white/10' : 'bg-black/10'
+            }`}>
               <Search className="text-secondary" size={48} />
-            </motion.div>
+            </div>
             <h3 className="text-2xl font-bold text-primary mb-4">No items found</h3>
             <p className="text-secondary text-center max-w-md mb-8 leading-relaxed">
-              {filter.searchQuery 
+              {filter.searchQuery
                 ? `No results for "${filter.searchQuery}". Try adjusting your search terms or filters.`
-                : 'Start building your knowledge base. Add content from any source and let AI organize it for you.'
-              }
+                : 'Start building your knowledge base. Add notes, links, and files — they are organized for you automatically.'}
             </p>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => onFilterChange({ 
+              onClick={() => onFilterChange({
                 category: 'all',
                 contentType: '',
                 tags: [],
                 searchQuery: '',
+                favoritesOnly: false,
                 dateRange: undefined,
                 sortBy: 'recent',
                 viewMode: 'grid',
               })}
               className={`px-6 py-3 font-semibold rounded-xl transition-all duration-200 shadow-lg ${
-                settings.theme === 'dark' 
-                  ? 'bg-white text-black hover:bg-gray-100' 
+                settings.theme === 'dark'
+                  ? 'bg-white text-black hover:bg-gray-100'
                   : 'bg-black text-white hover:bg-gray-900'
               }`}
             >
-              {filter.searchQuery ? 'Clear Filters' : 'Add Your First Item'}
+              Clear Filters
             </motion.button>
           </motion.div>
         ) : (
@@ -439,12 +497,12 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                     <span className="text-secondary text-sm">{groupItems.length} items</span>
                   </motion.div>
                 )}
-                
-                <motion.div 
+
+                <motion.div
                   layout
                   className={`grid gap-6 ${
-                    viewMode === 'grid' 
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3' 
+                    viewMode === 'grid'
+                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3'
                       : viewMode === 'list'
                       ? 'grid-cols-1'
                       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
@@ -458,14 +516,14 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                        transition={{ 
-                          delay: index * 0.05,
-                          type: "spring",
+                        transition={{
+                          delay: Math.min(index * 0.03, 0.3),
+                          type: 'spring',
                           stiffness: 300,
-                          damping: 30
+                          damping: 30,
                         }}
                         whileHover={{ y: -5 }}
-                        className={viewMode === 'masonry' ? `break-inside-avoid mb-6` : ''}
+                        className={viewMode === 'masonry' ? 'break-inside-avoid mb-6' : ''}
                       >
                         <ContentCard
                           content={item}

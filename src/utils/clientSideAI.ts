@@ -1,6 +1,5 @@
-import { SavedContent } from '../types';
-
-// Client-side AI processing for encrypted content
+// Client-side heuristics for tagging, summaries, categories, and reminders.
+// Everything here runs synchronously on-device — no model, no API calls.
 export class ClientSideAI {
   private static instance: ClientSideAI;
   
