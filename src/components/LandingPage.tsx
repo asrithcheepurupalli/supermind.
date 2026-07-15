@@ -58,11 +58,70 @@ function IndexCard({
 
 const MARQUEE_WORDS = ['capture', 'tag', 'connect', 'recall', 'encrypt', 'rediscover'];
 
+// Live type-out loop for the ⌘K strip — makes the palette feel real before you've touched it.
+const DEMO_QUERIES = [
+  'that pasta recipe…',
+  'notes on design systems',
+  'what did I save last week?',
+  'lock my vault',
+];
+
+function TypedQuery() {
+  const [text, setText] = React.useState('');
+  React.useEffect(() => {
+    let qi = 0;
+    let ci = 0;
+    let deleting = false;
+    let timer: number;
+    const tick = () => {
+      const q = DEMO_QUERIES[qi];
+      if (!deleting) {
+        ci++;
+        setText(q.slice(0, ci));
+        if (ci === q.length) {
+          deleting = true;
+          timer = window.setTimeout(tick, 1500);
+          return;
+        }
+        timer = window.setTimeout(tick, 46 + Math.random() * 50);
+      } else {
+        ci--;
+        setText(q.slice(0, ci));
+        if (ci === 0) {
+          deleting = false;
+          qi = (qi + 1) % DEMO_QUERIES.length;
+        }
+        timer = window.setTimeout(tick, 24);
+      }
+    };
+    timer = window.setTimeout(tick, 700);
+    return () => window.clearTimeout(timer);
+  }, []);
+  return (
+    <span className="font-display text-xl italic text-ink-soft">
+      {text}
+      <span className="inline-block w-[2px] h-[1.1em] bg-accent align-middle ml-0.5 animate-pulse" />
+    </span>
+  );
+}
+
 /* ---------- page ---------- */
 
 export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps) {
   const { scrollY } = useScroll();
   const collageY = useTransform(scrollY, [0, 700], [0, -60]);
+
+  // ⌘K works right here on the landing page — it takes you into the notebook.
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onGetStarted();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onGetStarted]);
 
   const chapters = [
     {
@@ -100,10 +159,18 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
             ['writes 4 tags', 'done'],
             ['files under health', 'done'],
             ['sets friday reminder', 'done'],
-          ].map(([label, state]) => (
+          ].map(([label, state], ri) => (
             <div key={label} className="flex items-center justify-between py-1.5 border-b border-[var(--ink-line)] last:border-0">
               <span className="text-ink text-sm">{label}</span>
-              <span className="font-label text-[9px] text-accent">{state}</span>
+              <motion.span
+                initial={{ opacity: 0, scale: 1.9, rotate: -10 }}
+                whileInView={{ opacity: 1, scale: 1, rotate: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.5 + ri * 0.35, type: 'spring', stiffness: 300, damping: 14 }}
+                className="font-label text-[9px] text-accent"
+              >
+                {state}
+              </motion.span>
             </div>
           ))}
         </div>
@@ -118,25 +185,44 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
         <div className="card-ink-static rounded-sm p-5 rotate-[-1deg] relative overflow-hidden">
           <div className="font-label text-[10px] text-ink-faint mb-3">knowledge graph</div>
           <svg viewBox="0 0 280 130" className="w-full">
-            <g stroke="var(--ink-line)" strokeWidth="1">
-              <path d="M50 70 Q 100 30 150 55" fill="none" />
-              <path d="M150 55 Q 200 80 235 45" fill="none" />
-              <path d="M50 70 Q 110 105 190 95" fill="none" />
-              <path d="M150 55 Q 165 80 190 95" fill="none" />
-            </g>
+            {[
+              'M50 70 Q 100 30 150 55',
+              'M150 55 Q 200 80 235 45',
+              'M50 70 Q 110 105 190 95',
+              'M150 55 Q 165 80 190 95',
+            ].map((d, pi) => (
+              <motion.path
+                key={d}
+                d={d}
+                fill="none"
+                stroke="var(--ink-line)"
+                strokeWidth="1.2"
+                initial={{ pathLength: 0 }}
+                whileInView={{ pathLength: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 + pi * 0.2, duration: 0.7, ease: 'easeOut' }}
+              />
+            ))}
             {[
               { x: 50, y: 70, r: 13, label: 'design' },
               { x: 150, y: 55, r: 17, label: 'ideas' },
               { x: 235, y: 45, r: 10, label: 'reading' },
               { x: 190, y: 95, r: 11, label: 'work' },
-            ].map(n => (
-              <g key={n.label}>
+            ].map((n, ni) => (
+              <motion.g
+                key={n.label}
+                initial={{ opacity: 0, scale: 0 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.35 + ni * 0.2, type: 'spring', stiffness: 260, damping: 13 }}
+                style={{ transformOrigin: `${n.x}px ${n.y}px` }}
+              >
                 <circle cx={n.x} cy={n.y} r={n.r} fill="var(--accent)" opacity="0.9" />
                 <circle cx={n.x} cy={n.y} r={n.r} fill="none" stroke="var(--ink)" strokeWidth="1.5" />
                 <text x={n.x} y={n.y - n.r - 6} textAnchor="middle" fontSize="10" fontFamily="JetBrains Mono" fill="var(--ink-soft)">
                   {n.label}
                 </text>
-              </g>
+              </motion.g>
             ))}
           </svg>
         </div>
@@ -151,7 +237,15 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
         <div className="card-ink-static rounded-sm p-5 rotate-[1deg]">
           <div className="flex items-start justify-between mb-4">
             <div className="font-label text-[10px] text-ink-faint">vault status</div>
-            <span className="stamp text-[10px] text-accent">sealed</span>
+            <motion.span
+              initial={{ opacity: 0, scale: 2.4, rotate: 8 }}
+              whileInView={{ opacity: 1, scale: 1, rotate: -2 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.55, type: 'spring', stiffness: 320, damping: 15 }}
+              className="stamp text-[10px] text-accent"
+            >
+              sealed
+            </motion.span>
           </div>
           <div className="font-label text-xs text-ink-soft space-y-2">
             <div>cipher ......... AES-256-GCM</div>
@@ -173,9 +267,9 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
         className="sticky top-0 z-50 bg-paper/90 backdrop-blur-md border-b-[1.5px] border-ink"
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-1 group cursor-default">
             <span className="font-display text-3xl tracking-tight">supermind</span>
-            <span className="w-2 h-2 rounded-full bg-accent inline-block" />
+            <span className="w-2 h-2 rounded-full bg-accent inline-block transition-transform duration-300 group-hover:scale-[1.6]" />
           </div>
           <div className="flex items-center gap-6">
             <button onClick={onAbout} className="font-label text-xs text-ink-soft hover:text-ink transition-colors">
@@ -211,7 +305,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
             >
               A mind that
               <br />
-              <em className="marker">never forgets<span className="text-accent">.</span></em>
+              <em className="marker marker-sweep">never forgets<span className="text-accent">.</span></em>
             </motion.h1>
 
             <motion.p
@@ -307,7 +401,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
       </section>
 
       {/* Marquee */}
-      <div className="border-y-[1.5px] border-ink bg-accent overflow-hidden py-3 select-none" aria-hidden>
+      <div className="marquee-hover border-y-[1.5px] border-ink bg-accent overflow-hidden py-3 select-none" aria-hidden>
         <div className="animate-marquee flex whitespace-nowrap w-max">
           {[0, 1].map(half => (
             <div key={half} className="flex">
@@ -356,13 +450,18 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
             </h3>
             <p className="text-ink-soft">Search every thought. Jump anywhere. Run any action.</p>
           </div>
-          <div className="card-ink-static rounded-sm px-6 py-4 flex items-center gap-4 rotate-[-1deg]">
-            <span className="font-label text-xs text-ink-soft flex items-center gap-1.5">
-              <Command size={13} /> K
+          <button
+            onClick={onGetStarted}
+            title="Try it — or literally press ⌘K"
+            className="cmd-strip card-ink haptic rounded-sm px-6 py-4 flex items-center gap-4 rotate-[-1deg] cursor-pointer text-left min-w-[320px] group"
+          >
+            <span className="keycap text-xs">
+              <Command size={12} /> K
             </span>
             <span className="w-px h-6 bg-[var(--ink-line)]" />
-            <span className="font-display text-xl italic text-ink-soft">ask anything…</span>
-          </div>
+            <TypedQuery />
+            <ArrowRight size={14} className="ml-auto text-ink-faint opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
+          </button>
         </div>
       </section>
 
@@ -384,7 +483,18 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
         >
           Your thoughts belong <em className="marker">on your device</em>,
           <br />
-          not on someone's <span className="line-through decoration-[var(--accent)] decoration-4">server</span>.
+          not on someone's{' '}
+          <span className="relative inline-block">
+            server
+            <motion.span
+              aria-hidden
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.5, duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute left-[-2%] right-[-2%] top-[52%] h-[0.09em] bg-accent origin-left rounded-full"
+            />
+          </span>.
         </motion.blockquote>
         <motion.div
           initial={{ opacity: 0 }}
