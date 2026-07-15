@@ -44,7 +44,7 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
 
   const submitEmail = () => {
     if (email && !/\S+@\S+\.\S+/.test(email)) {
-      setEmailError("That doesn't look like an email — or just leave it blank.");
+      setEmailError("That doesn't look like an email. You can also leave it blank.");
       return;
     }
     hapticTap();
@@ -110,7 +110,7 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
           {step === 'name' && (
             <motion.div key="name" {...slide} className="w-full max-w-2xl text-center">
               <p className="font-label text-[11px] text-accent mb-8">
-                [ let's set up your space — no account needed ]
+                [ set up your space · no account needed ]
               </p>
               <h1 className="font-display text-5xl md:text-7xl leading-[1.02] tracking-tight mb-14">
                 What should we
@@ -158,7 +158,7 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
                 your <em className="marker">profile?</em>
               </h1>
               <p className="text-ink-soft text-lg mb-12">
-                Purely cosmetic — it never leaves this device. Skip it freely.
+                Only used to greet you. It never leaves this device, and you can skip it.
               </p>
               <input
                 autoFocus

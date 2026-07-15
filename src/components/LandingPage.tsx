@@ -149,7 +149,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
     {
       num: '02',
       title: 'It files itself',
-      body: 'Tags, summaries, categories, reminders — extracted on your device the instant you save. The librarian lives inside the notebook.',
+      body: 'Tags, summaries, categories, reminders. All of it extracted on your device the instant you save, by a librarian that lives inside the notebook.',
       icon: Search,
       demo: (
         <div className="card-ink-static rounded-sm p-5 rotate-[1deg]">
@@ -231,7 +231,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
     {
       num: '04',
       title: 'Sealed, if you want it sealed',
-      body: 'AES-256 encryption at rest with a passphrase only you know. Auto-locks when you step away. No server ever sees a byte — there is no server.',
+      body: 'AES-256 encryption at rest with a passphrase only you know. It locks itself when you step away. No server ever sees a byte, because there is no server.',
       icon: Lock,
       demo: (
         <div className="card-ink-static rounded-sm p-5 rotate-[1deg]">
@@ -314,8 +314,8 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
               transition={{ delay: 0.16 }}
               className="text-lg text-ink-soft max-w-md leading-relaxed mb-10"
             >
-              Every note, link, and stray thought — captured in a keystroke, filed by
-              an organizer that lives on your device, and found again the moment you need it.
+              Every note, link, and stray thought lands in one keystroke, gets filed by
+              an organizer that lives on your device, and turns up the moment you need it.
             </motion.p>
 
             <motion.div
@@ -343,7 +343,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
               <Tape className="-top-3 left-16 rotate-[-4deg]" />
               <div className="font-label text-[10px] text-ink-faint mb-2">note · 09:41</div>
               <p className="font-display text-xl leading-snug">
-                Call nonna about the pasta recipe — the one with the burnt butter.
+                Call nonna about the pasta recipe, the one with the burnt butter.
               </p>
               <div className="flex gap-2 mt-3">
                 <span className="font-label text-[10px] text-accent">#family</span>
@@ -356,7 +356,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
                 <LinkIcon size={10} /> link · saved
               </div>
               <p className="text-sm text-ink leading-relaxed">
-                "How spaced repetition rewires long-term memory" — 12 min read
+                "How spaced repetition rewires long-term memory" · 12 min read
               </p>
               <div className="mt-3 pt-3 border-t border-[var(--ink-line)] flex justify-between items-center">
                 <span className="font-label text-[10px] text-accent">#learning</span>
@@ -452,7 +452,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
           </div>
           <button
             onClick={onGetStarted}
-            title="Try it — or literally press ⌘K"
+            title="Try it, or just press ⌘K"
             className="cmd-strip card-ink haptic rounded-sm px-6 py-4 flex items-center gap-4 rotate-[-1deg] cursor-pointer text-left min-w-[320px] group"
           >
             <span className="keycap text-xs">
@@ -547,7 +547,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
           <div className="font-label text-[10px] text-ink-faint text-center md:text-right leading-relaxed">
             set in instrument serif & jetbrains mono · runs entirely on your device
             <br />
-            © {new Date().getFullYear()} — your thoughts, your rules, your privacy.{' '}
+            © {new Date().getFullYear()} · no accounts were created in the making of this app.{' '}
             <button onClick={onAbout} className="underline hover:text-ink transition-colors">about</button>
           </div>
         </div>

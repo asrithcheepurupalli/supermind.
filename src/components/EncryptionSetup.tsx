@@ -37,7 +37,7 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
     setPassword(generated);
     setConfirmPassword(generated);
     setUseGeneratedPassword(true);
-    toast.success('Passphrase generated — save it somewhere safe.');
+    toast.success('Passphrase generated. Save it somewhere safe.');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,7 +82,7 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
       <p className="text-ink-soft text-sm leading-relaxed mb-8">
         {isLogin
           ? 'Enter your passphrase to open the vault.'
-          : 'It becomes your encryption key — never stored, never sent. Lose it and the vault stays sealed forever.'}
+          : 'It becomes your encryption key, never stored and never sent. Lose it and the vault stays sealed for good.'}
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -178,14 +178,14 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
           className="mt-6 border-[1.5px] border-ink rounded-sm p-4 bg-[var(--accent-soft)]"
         >
           <p className="font-label text-[9px] text-ink leading-relaxed">
-            write it down. there is no reset — that's the point of real encryption.
+            write it down. real encryption has no reset.
           </p>
         </motion.div>
       )}
 
       {!isLogin && !useGeneratedPassword && (
         <p className="font-label text-[9px] text-ink-faint mt-6 leading-relaxed">
-          key derived on-device (pbkdf2 · 250k) — lives in memory only
+          key derived on this device (pbkdf2 · 250k) and held in memory only
         </p>
       )}
     </div>

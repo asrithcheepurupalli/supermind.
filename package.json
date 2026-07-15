@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Your local-first second brain: capture notes, links and files; organized automatically and searchable instantly — entirely on your device.",
+  "description": "A second brain that stays on your device. Capture notes, links, and files; they get organized automatically and found instantly.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

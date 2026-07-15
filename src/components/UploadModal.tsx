@@ -75,7 +75,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
         } else if (file.size <= MAX_EMBED_SIZE) {
           fileUrl = await readFileAsDataURL(file);
         } else {
-          toast(`"${file.name}" is over 1.5MB — filing its name only (local storage limit).`, { icon: 'ℹ️' });
+          toast(`"${file.name}" is over 1.5MB, so only its name was filed (local storage keeps things small).`);
         }
 
         await onAddContent({

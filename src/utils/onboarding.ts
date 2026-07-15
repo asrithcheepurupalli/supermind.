@@ -47,42 +47,42 @@ export const createOnboardingContent = (userId: string): SavedContent[] => {
   return [
     guide(
       1,
-      '🎯 Welcome to supermind! This is your local-first second brain: everything you save is stored on this device, organized automatically, and searchable instantly. These short guides show you around — dismiss each one when you are done with it.',
-      'Start here: what supermind is and how these guides work.',
+      'Welcome to supermind. Everything you save lives on this device, gets organized automatically, and turns up instantly when you search. These six short guides show you around. Dismiss each one once you have read it.',
+      'What supermind is and how these guides work.',
       ['welcome', 'getting-started'],
       ['Read the next guides', 'Dismiss this card when done']
     ),
     guide(
       2,
-      '📝 Adding content: click the + button (or press Cmd/Ctrl+N) to save text notes, web links, images, PDFs, audio, or video. Content is tagged, summarized, and categorized automatically as you add it.',
+      'Adding things: press the + button or Cmd/Ctrl+N and a fresh page opens. Write a note, paste a link, or drop in an image, PDF, or recording. Whatever you file gets tagged and categorized on the spot.',
       'How to capture notes, links, and files into your knowledge base.',
       ['tutorial', 'add-content', 'shortcuts'],
       ['Click the + button', 'Try Cmd/Ctrl+N', 'Add a quick note']
     ),
     guide(
       3,
-      '🔍 Finding things: use the search bar (Cmd/Ctrl+K) for instant fuzzy search across all your content, tags, and summaries. Combine it with the category, type, and tag filters in the sidebar to narrow down results.',
+      'Finding things: Cmd/Ctrl+K opens the command palette, which searches everything you have written, including tags and summaries, and forgives typos. The sidebar filters by category, type, and tag when you want to narrow it down.',
       'Search and filter your entire knowledge base in milliseconds.',
       ['search', 'filters'],
       ['Press Cmd/Ctrl+K', 'Try a search', 'Click a sidebar filter']
     ),
     guide(
       4,
-      '🏷️ Smart organization: every item is tagged and categorized automatically from its content. Click any tag to filter by it, edit an item to adjust its tags, and use the sidebar to browse by category or content type.',
+      'Tags do the filing. Every entry is tagged from its own words, so you rarely need to sort anything by hand. Click a tag to see everything that shares it, or edit an entry if the tags miss the point.',
       'How auto-tagging and categories keep your library organized.',
       ['organization', 'tags', 'categories'],
       ['Click a tag on any card', 'Edit an item\'s tags', 'Browse sidebar categories']
     ),
     guide(
       5,
-      '📊 Analytics & Insights: the Analytics view charts your activity, top categories, and popular tags — all computed from your real data. The Insights view surfaces related items, tag connections, and personalized suggestions.',
-      'See patterns in what you save and rediscover forgotten content.',
-      ['analytics', 'insights'],
-      ['Open the Analytics tab', 'Check the Insights view']
+      'Two more pages worth knowing: the graph draws your tags as a constellation, connected when they appear in the same entries. The almanac is a printed summary of your own habits: what you capture, when, and which ideas keep meeting each other.',
+      'The graph and the almanac, two views of your own thinking.',
+      ['graph', 'almanac'],
+      ['Open the Graph view', 'Open the Almanac']
     ),
     guide(
       6,
-      '🔐 Privacy: your data never leaves this device. You can additionally enable encryption at rest in Settings → Security — content is then encrypted with AES-256-GCM using a passphrase only you know. Export a backup any time from Settings → Data & Storage.',
+      'Privacy: nothing you write leaves this device. If you want more than that, turn on encryption in Settings under Security and your content is sealed with AES-256 behind a passphrase only you know. Export a backup any time from Data & Storage.',
       'Local-first storage, optional AES-256 encryption at rest, and one-click backups.',
       ['privacy', 'security', 'encryption'],
       ['Open Settings → Security', 'Enable encryption', 'Export a backup']

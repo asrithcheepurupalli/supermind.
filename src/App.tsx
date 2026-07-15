@@ -157,7 +157,7 @@ function App() {
       createdAt: new Date(),
     };
     setUser(newUser);
-    toast.success(`Welcome, ${newUser.name}! 🎉`);
+    toast.success(`Welcome, ${newUser.name}.`);
     if (encryptionPassword) {
       await setupEncryption(encryptionPassword);
     }

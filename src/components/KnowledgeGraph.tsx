@@ -401,7 +401,7 @@ export default function KnowledgeGraph() {
         </div>
         <p className="font-label text-[9px] text-ink-faint text-right hidden sm:block max-w-[220px] leading-relaxed pb-1">
           {hoveredTag ? (
-            <>reading: <span className="text-accent">#{hoveredTag}</span> — click to open</>
+            <>reading: <span className="text-accent">#{hoveredTag}</span> · click to open</>
           ) : (
             <>every tag is a star. tags that appear together are drawn together.</>
           )}
@@ -420,8 +420,8 @@ export default function KnowledgeGraph() {
             <span className="stamp mb-5">Uncharted</span>
             <h3 className="font-display text-3xl text-ink mb-3">Your graph is waiting to grow</h3>
             <p className="text-ink-soft text-sm max-w-sm leading-relaxed">
-              Add a few notes and links — as tags start co-occurring, this becomes a living map
-              of your mind's connections.
+              Add a few notes and links. When tags start appearing together, this page
+              becomes a map of how your thinking connects.
             </p>
           </div>
         ) : (

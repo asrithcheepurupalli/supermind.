@@ -1,18 +1,5 @@
 import { motion } from 'framer-motion';
-import {
-  ArrowLeft,
-  Brain,
-  Shield,
-  HardDrive,
-  Search,
-  Sparkles,
-  Lock,
-  Code,
-  Heart,
-  Zap,
-  Database,
-  EyeOff,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 interface AboutPageProps {
   onBack: () => void;
@@ -20,233 +7,183 @@ interface AboutPageProps {
 
 const principles = [
   {
-    icon: HardDrive,
-    title: 'Local-First, Always',
+    num: '01',
+    title: 'Local first, actually',
     description:
-      'Your knowledge base lives in your browser\'s storage on your device. There is no server, no account, and no telemetry. If you clear your data, it\'s gone — which is why one-click export exists.',
+      'Your notes live in your browser\'s storage, on your machine. There is no server, no account, and no telemetry. The flip side is that clearing your browser data clears your notes, which is why export is one click away.',
   },
   {
-    icon: Lock,
-    title: 'Privacy by Architecture',
+    num: '02',
+    title: 'Privacy by architecture',
     description:
-      'Optional encryption at rest uses AES-256-GCM via the Web Crypto API. The key is derived from your passphrase with PBKDF2 (250,000 iterations) and only ever exists in memory. Nobody — including this app\'s code — can read your data without it.',
+      'Turn on encryption and every entry is sealed with AES-256 before it touches storage. The key comes from your passphrase and exists only in memory. Even this app\'s own code cannot read your data without it.',
   },
   {
-    icon: Brain,
-    title: 'On-Device Intelligence',
+    num: '03',
+    title: 'Smarts without a model',
     description:
-      'Tagging, summaries, category suggestions, reminder detection, and insights are all computed locally with lightweight heuristics. No content is ever sent to an AI API or any other service.',
+      'Tagging, summaries, categories, and reminders are plain heuristics running in your browser. Nothing is sent to an AI service. They are quick and useful, not clever, and the code does not pretend otherwise.',
   },
   {
-    icon: Search,
-    title: 'Instant Retrieval',
+    num: '04',
+    title: 'Capture is nothing without recall',
     description:
-      'Fuzzy search (powered by Fuse.js) works across content, summaries, and tags, combined with category, type, tag, date, and favorite filters — because capture is worthless without retrieval.',
+      'Fuzzy search covers everything you have written, tags and summaries included, and forgives typos. Filters stack on top. A note you cannot find again was never really saved.',
+  },
+];
+
+const notList = [
+  {
+    title: 'It does not sync.',
+    detail: 'Local first means exactly that. Export and import moves your data between browsers and machines.',
+  },
+  {
+    title: 'It is not an AI.',
+    detail: 'The organizer is keyword heuristics, fast and private. Useful, not magical.',
+  },
+  {
+    title: 'It is not a media library.',
+    detail: 'Browser storage holds about 5MB, so files over 1.5MB are recorded by name only.',
+  },
+  {
+    title: 'It cannot reset your passphrase.',
+    detail: 'Real encryption has no back door. Keep a backup.',
   },
 ];
 
 const stack = [
-  { icon: Code, label: 'React 18 + TypeScript' },
-  { icon: Zap, label: 'Vite + Tailwind CSS' },
-  { icon: Database, label: 'Zustand (persisted locally)' },
-  { icon: Search, label: 'Fuse.js fuzzy search' },
-  { icon: Shield, label: 'Web Crypto API (AES-256-GCM)' },
-  { icon: Sparkles, label: 'Framer Motion' },
+  'react 18 + typescript',
+  'vite + tailwind css',
+  'zustand, persisted locally',
+  'fuse.js search',
+  'web crypto api, aes-256-gcm',
+  'framer motion',
 ];
 
 export default function AboutPage({ onBack }: AboutPageProps) {
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-paper text-ink noise">
       {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed top-4 left-4 right-4 z-40 bg-black/20 backdrop-blur-xl border border-white/20 rounded-2xl"
-      >
-        <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Sparkles className="text-white" size={24} />
-            </div>
-            <span className="text-3xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
-              supermind.
-            </span>
+      <header className="border-b-[1.5px] border-ink bg-paper sticky top-0 z-40">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="font-display text-xl tracking-tight">supermind</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
           </div>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+          <button
             onClick={onBack}
-            className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl font-medium transition-all duration-200"
+            className="btn-paper haptic px-4 py-2 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
           >
-            <ArrowLeft size={18} />
-            Back
-          </motion.button>
+            <ArrowLeft size={12} /> Back
+          </button>
         </div>
-      </motion.header>
+      </header>
 
       {/* Hero */}
-      <section className="pt-40 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-6xl font-bold mb-8"
-          >
-            <span className="text-white">a second brain that is </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">
-              actually yours
-            </span>
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="text-xl text-gray-300 leading-relaxed"
-          >
-            Most note and bookmarking tools ask you to trade privacy for convenience: your
-            thoughts go to someone else's server, get mined for signals, and can vanish when a
-            company pivots. supermind takes the opposite bet — a knowledge base that is fast,
-            organized, and delightful precisely <em>because</em> it never leaves your device.
-          </motion.p>
-        </div>
+      <section className="max-w-4xl mx-auto px-6 pt-20 pb-16">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="font-label text-[10px] text-accent mb-4"
+        >
+          [ about this notebook ]
+        </motion.p>
+        <motion.h1
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="font-display text-5xl md:text-6xl tracking-tight leading-[1.05] mb-8"
+        >
+          A second brain that is <em className="marker">actually yours</em>.
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="text-lg text-ink-soft leading-relaxed max-w-2xl"
+        >
+          Most note tools ask you to trade privacy for convenience. Your thoughts go to
+          someone else's server, get mined for signals, and can vanish when a company
+          pivots. supermind makes the opposite bet: it is fast, organized, and pleasant
+          to use precisely because it never leaves your device.
+        </motion.p>
       </section>
 
       {/* Principles */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900/40 to-gray-800/40">
-        <div className="max-w-5xl mx-auto">
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-4xl font-bold text-center mb-16"
-          >
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">
-              principles
-            </span>
-            <span className="text-white"> we don't compromise on</span>
-          </motion.h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {principles.map((principle, index) => (
+      <section className="border-y-[1.5px] border-ink bg-paper-raised">
+        <div className="max-w-4xl mx-auto px-6 py-16">
+          <p className="font-label text-[10px] text-ink-soft mb-10">The principles</p>
+          <div className="grid md:grid-cols-2 gap-x-12 gap-y-10">
+            {principles.map((p, i) => (
               <motion.div
-                key={principle.title}
-                initial={{ opacity: 0, y: 30 }}
+                key={p.num}
+                initial={{ opacity: 0, y: 14 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-8"
+                transition={{ delay: i * 0.06 }}
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl flex items-center justify-center mb-6">
-                  <principle.icon className="text-white" size={26} />
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4">{principle.title}</h3>
-                <p className="text-gray-300 leading-relaxed">{principle.description}</p>
+                <p className="font-label text-[10px] text-accent mb-2">{p.num}</p>
+                <h3 className="font-display text-2xl text-ink mb-2">{p.title}</h3>
+                <p className="text-ink-soft text-sm leading-relaxed">{p.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Honest limitations */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="bg-white/5 border border-white/10 rounded-3xl p-10"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <EyeOff className="text-emerald-400" size={24} />
-              <h2 className="text-3xl font-bold text-white">What supermind is not</h2>
+      {/* What it is not */}
+      <section className="max-w-4xl mx-auto px-6 py-16">
+        <div className="flex items-baseline gap-3 mb-8">
+          <span className="stamp">No fine print</span>
+          <h2 className="font-display text-3xl text-ink">What supermind is not</h2>
+        </div>
+        <div className="space-y-5 max-w-2xl">
+          {notList.map((item) => (
+            <div key={item.title} className="flex gap-3">
+              <span className="mt-2 w-1.5 h-1.5 rounded-full bg-accent flex-shrink-0" />
+              <p className="text-sm leading-relaxed">
+                <strong className="text-ink font-semibold">{item.title}</strong>{' '}
+                <span className="text-ink-soft">{item.detail}</span>
+              </p>
             </div>
-            <ul className="space-y-4 text-gray-300 leading-relaxed list-disc list-inside">
-              <li>
-                <strong className="text-white">It doesn't sync between devices.</strong> Local-first
-                means exactly that. Use export/import to move your data between browsers.
-              </li>
-              <li>
-                <strong className="text-white">Its "smarts" are honest heuristics, not a language model.</strong>{' '}
-                Tagging and summaries use keyword and sentence-scoring techniques that run
-                instantly and privately. They're useful, not magical.
-              </li>
-              <li>
-                <strong className="text-white">Storage is bounded by your browser.</strong> localStorage
-                offers roughly 5MB, so large files keep their name and metadata rather than the
-                full file.
-              </li>
-              <li>
-                <strong className="text-white">A forgotten passphrase is unrecoverable.</strong> That's
-                the point of real encryption — there is no reset button, so keep a backup.
-              </li>
-            </ul>
-          </motion.div>
+          ))}
         </div>
       </section>
 
-      {/* Tech Stack */}
-      <section className="py-20 px-6 bg-gradient-to-r from-gray-900/40 to-gray-800/40">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-4xl font-bold mb-12"
-          >
-            <span className="text-white">built with </span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-blue-400">
-              boring, reliable tech
-            </span>
-          </motion.h2>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {stack.map((item, index) => (
-              <motion.div
-                key={item.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-center gap-3 bg-white/10 border border-white/20 rounded-2xl p-4 text-left"
-              >
-                <item.icon className="text-emerald-400 flex-shrink-0" size={20} />
-                <span className="text-gray-200 text-sm font-medium">{item.label}</span>
-              </motion.div>
+      {/* Stack */}
+      <section className="border-t-[1.5px] border-[var(--ink-line)]">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <p className="font-label text-[10px] text-ink-soft mb-5">Built with boring, reliable tech</p>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {stack.map((item) => (
+              <span key={item} className="font-label text-[10px] text-ink-faint">{item}</span>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-3xl p-12"
+      <section className="max-w-4xl mx-auto px-6 pb-24 pt-8">
+        <div className="card-ink-static rounded-sm px-8 py-12 text-center">
+          <h2 className="font-display text-4xl text-ink mb-3">
+            Try it. It is <em className="marker">already yours</em>.
+          </h2>
+          <p className="text-ink-soft mb-8">
+            No account, no card, no data leaving your machine. Open it and start writing.
+          </p>
+          <button
+            onClick={onBack}
+            className="btn-ink haptic px-8 py-3.5 rounded-sm font-semibold inline-flex items-center gap-2"
           >
-            <Heart className="text-emerald-400 mx-auto mb-6" size={32} />
-            <h2 className="text-4xl font-bold text-white mb-6">Try it — it's already yours</h2>
-            <p className="text-gray-300 text-lg mb-10">
-              No account, no credit card, no data leaving your machine. Just open it up and
-              start capturing.
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={onBack}
-              className="px-10 py-4 bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 rounded-2xl font-bold text-lg text-white transition-all duration-300 shadow-2xl"
-            >
-              Get Started
-            </motion.button>
-          </motion.div>
+            Get Started <ArrowRight size={16} />
+          </button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-white/10 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} supermind. Your thoughts, your rules, your privacy.
+      <footer className="border-t-[1.5px] border-ink">
+        <div className="max-w-4xl mx-auto px-6 py-8 text-center font-label text-[9px] text-ink-faint">
+          © {new Date().getFullYear()} supermind · runs entirely on your device
+        </div>
       </footer>
     </div>
   );

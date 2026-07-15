@@ -95,7 +95,7 @@ function TallyMarks({ count }: { count: number }) {
   );
 
   if (count === 0) {
-    return <span className="font-display italic text-ink-faint text-lg">no marks yet — today's the day</span>;
+    return <span className="font-display italic text-ink-faint text-lg">no marks yet. today's the day</span>;
   }
 
   return (
@@ -179,7 +179,7 @@ export default function Dashboard() {
           </h1>
           <p className="font-display italic text-ink-soft text-lg mt-3">
             {todayCount === 0
-              ? 'the page is blank — write something down.'
+              ? 'the page is blank. write something down.'
               : `${todayCount} thought${todayCount !== 1 ? 's' : ''} captured today. keep going.`}
           </p>
         </div>
@@ -211,7 +211,7 @@ export default function Dashboard() {
                 }
               }}
               rows={quickNote.includes('\n') ? 3 : 1}
-              placeholder="Capture a thought — it files itself…"
+              placeholder="Capture a thought. It files itself."
               className="bare-input font-display italic text-2xl w-full bg-transparent text-ink placeholder:text-[var(--ink-faint)] placeholder:not-italic outline-none resize-none border-b-2 border-ink focus:border-[var(--accent)] transition-colors pb-2 caret-[var(--accent)]"
             />
             <span className="absolute right-0 -bottom-5 font-label text-[8px] text-ink-faint hidden sm:block">⌘↵ to file it</span>
@@ -267,7 +267,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-4">
             <History size={13} className="text-accent" />
             <span className="font-label text-[10px] text-ink-soft">memory lane</span>
-            <span className="font-display italic text-ink-faint text-sm">— what past-you wrote</span>
+            <span className="font-display italic text-ink-faint text-sm">what past-you wrote</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {memoryLane.map(({ label, item, rotate }) => (

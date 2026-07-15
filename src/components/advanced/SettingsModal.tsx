@@ -105,10 +105,10 @@ export default function SettingsModal() {
         if (count > 0) {
           toast.success(`Imported ${count} item${count !== 1 ? 's' : ''}`);
         } else {
-          toast('No new items to import (duplicates are skipped).', { icon: 'ℹ️' });
+          toast('No new items to import. Duplicates are skipped.');
         }
       } catch {
-        toast.error('Invalid file format — expected a supermind JSON export');
+        toast.error('That file is not a supermind JSON export');
       }
     };
     reader.readAsText(file);
@@ -129,7 +129,7 @@ export default function SettingsModal() {
         <span className="marker">{user?.name || 'You'}</span>
       </h3>
       {user?.email && <p className="font-mono text-xs text-ink-soft">{user.email}</p>}
-      <p className="font-label text-[9px] text-accent mt-3">local profile — data stays on this device</p>
+      <p className="font-label text-[9px] text-accent mt-3">local profile · data stays on this device</p>
 
       <div className="grid grid-cols-3 border-y-2 border-[var(--ink)] divide-x divide-[var(--ink-line)] mt-8">
         {[
@@ -200,7 +200,7 @@ export default function SettingsModal() {
       </Row>
 
       {settings.security.encryptionEnabled && isEncryptionSetup && (
-        <Row title="Lock now" detail="Clear the key from memory — you'll need your passphrase to continue.">
+        <Row title="Lock now" detail="Clears the key from memory. You'll need your passphrase to get back in.">
           <button
             onClick={() => { lock(); setSettingsModalOpen(false); }}
             className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
@@ -267,7 +267,7 @@ export default function SettingsModal() {
         />
       </Row>
       <p className="font-label text-[9px] text-ink-faint mt-5 leading-relaxed">
-        supermind is fully local — there are no emails or push notifications, so there's
+        supermind is fully local. There are no emails or push notifications, so there is
         nothing else to configure here.
       </p>
     </div>

@@ -38,7 +38,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
         worker?.addEventListener('statechange', () => {
           if (worker.state === 'activated') {
             import('react-hot-toast').then(({ default: toast }) =>
-              toast('Saved to this device — supermind now works offline.', { icon: '📓' })
+              toast('supermind is saved on this device and works offline now.')
             );
           }
         });

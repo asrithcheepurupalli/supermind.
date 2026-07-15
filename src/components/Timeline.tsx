@@ -255,7 +255,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
             </>
           ) : (
             <>
-              <p className="font-display italic text-xl text-ink-soft mb-6">the book is empty — write the first line</p>
+              <p className="font-display italic text-xl text-ink-soft mb-6">the book is empty. write the first line</p>
               <button
                 onClick={() => { hapticTap(); setUploadModalOpen(true); }}
                 className="btn-ink haptic px-6 py-3 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
@@ -353,7 +353,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           </button>
                         ))}
                         {item.reminderDate && (
-                          <span className="font-label text-[9px] text-accent">⏰ reminder</span>
+                          <span className="font-label text-[9px] text-accent">reminder set</span>
                         )}
                       </div>
                     )}

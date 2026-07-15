@@ -111,7 +111,7 @@ export default function CommandPalette() {
         run: () => setActiveView('profile'),
       },
       {
-        id: 'legend', label: 'Keyboard Shortcuts — the legend', icon: Command,
+        id: 'legend', label: 'Keyboard Shortcuts', icon: Command,
         keywords: 'keyboard shortcuts legend help keys cheat sheet',
         run: () => setLegendOpen(true),
       },
@@ -156,7 +156,7 @@ export default function CommandPalette() {
         keywords: 'lock secure encrypt protect',
         run: () => {
           lock();
-          toast('Workspace locked', { icon: '🔒' });
+          toast('Workspace locked');
         },
       });
     }

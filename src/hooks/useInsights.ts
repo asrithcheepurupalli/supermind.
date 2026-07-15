@@ -154,7 +154,7 @@ export const useInsights = (content: SavedContent[]): InsightsData => {
     } else if (suggestions.length === 0) {
       suggestions.push({
         title: 'All caught up',
-        detail: 'No overdue reminders or untagged items. Keep capturing!',
+        detail: 'No overdue reminders and nothing left untagged.',
       });
     }
 

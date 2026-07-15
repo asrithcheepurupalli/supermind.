@@ -87,7 +87,7 @@ export default function Almanac() {
         className="mb-12"
       >
         <div className="flex items-baseline justify-between mb-4">
-          <h3 className="font-label text-[10px] text-ink-soft">Fig. 1 — Thirty days of capture</h3>
+          <h3 className="font-label text-[10px] text-ink-soft">Fig. 1. Thirty days of capture</h3>
           <p className="font-label text-[9px] text-ink-faint tabular-nums">{monthTotal} total</p>
         </div>
         <div className="flex items-end h-28 gap-[3px] border-b-[1.5px] border-[var(--ink)]">
@@ -132,7 +132,7 @@ export default function Almanac() {
         {/* Shelves (categories) */}
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
           <h3 className="font-label text-[10px] text-ink-soft border-b-[1.5px] border-[var(--ink)] pb-2 mb-3">
-            Table A — The shelves
+            Table A. The shelves
           </h3>
           {analytics.topCategories.length === 0 ? (
             <p className="text-ink-faint text-sm italic py-4">Nothing filed yet.</p>
@@ -161,7 +161,7 @@ export default function Almanac() {
         {/* Tag specimen list with dot leaders */}
         <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <h3 className="font-label text-[10px] text-ink-soft border-b-[1.5px] border-[var(--ink)] pb-2 mb-3">
-            Table B — Most-used tags
+            Table B. Most-used tags
           </h3>
           {analytics.topTags.length === 0 ? (
             <p className="text-ink-faint text-sm italic py-4">Tags appear as you write.</p>
@@ -197,7 +197,7 @@ export default function Almanac() {
         className="mb-12"
       >
         <h3 className="font-label text-[10px] text-ink-soft border-b-[1.5px] border-[var(--ink)] pb-2 mb-5">
-          Margin notes — patterns the page noticed
+          Margin notes: what the page noticed
         </h3>
         <div className="space-y-4 font-display text-xl sm:text-2xl text-ink leading-relaxed max-w-2xl">
           {analytics.totalItems === 0 ? (
@@ -234,7 +234,7 @@ export default function Almanac() {
                 <p key={`${conn.tagA}-${conn.tagB}`}>
                   <span className="font-mono text-base text-accent">#{conn.tagA}</span> and{' '}
                   <span className="font-mono text-base text-accent">#{conn.tagB}</span> keep showing up
-                  together — <span className="italic">{conn.count} times so far</span>.
+                  together, <span className="italic">{conn.count} times so far</span>.
                 </p>
               ))}
             </>

@@ -20,7 +20,7 @@ export const useAutoLock = () => {
       window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
         lock();
-        toast('Workspace locked after inactivity', { icon: '🔒' });
+        toast('Workspace locked after inactivity');
       }, timeoutMinutes * 60_000);
     };
 

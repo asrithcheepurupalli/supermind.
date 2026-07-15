@@ -294,7 +294,7 @@ export const useStore = create<AppState>()(
 
         set((state) => ({ content: [enhancedContent, ...state.content] }));
         await syncEncryptedItem(enhancedContent, set);
-        toast.success('Content added!');
+        toast.success('Filed.');
       },
 
       updateContent: (id, updates) => {
