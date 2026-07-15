@@ -30,6 +30,19 @@ const typeGlyphs: Record<SavedContent['contentType'], string> = {
   video: '▶',
 };
 
+const formatSize = (bytes?: number) => {
+  if (!bytes) return null;
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+// The first line of an attachment's contentText is its filename.
+const fileName = (item: SavedContent) => item.contentText.split('\n')[0];
+
+const plateCaption = (item: SavedContent) =>
+  ['Plate', fileName(item), formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ');
+
 const timeLabel = (d: Date) =>
   d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
 
@@ -45,7 +58,8 @@ const dayHeading = (d: Date) => {
 // The Book: a continuous journal, not a card grid. Entries live on ruled
 // lines with a margin column; clicking an entry unfolds it in place.
 export default function Timeline({ content, filter, onToggleFavorite, onFilterChange }: TimelineProps) {
-  const { deleteContent, updateContent, setFilter, setUploadModalOpen, bulkDeleteContent } = useStore();
+  const { deleteContent, updateContent, setFilter, setUploadModalOpen, bulkDeleteContent, settings } = useStore();
+  const showPreviews = settings.display.showPreviews;
   const [sortAsc, setSortAsc] = React.useState(false);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -282,13 +296,23 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   {/* Entry body */}
                   <div className="py-3.5 min-w-0 cursor-pointer" onClick={() => !editing && toggleExpand(item.id)}>
                     {!editing ? (
-                      <p className={`font-display text-ink leading-relaxed break-words ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
-                        {item.contentType === 'link' ? (
-                          <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
-                            {item.contentText}
-                          </span>
-                        ) : item.contentText}
-                      </p>
+                      <div className="flex items-start justify-between gap-4">
+                        <p className={`font-display text-ink leading-relaxed break-words min-w-0 ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
+                          {item.contentType === 'link' ? (
+                            <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
+                              {item.contentText}
+                            </span>
+                          ) : item.contentText}
+                        </p>
+                        {/* Tiny tipped-in thumbnail on collapsed image rows */}
+                        {!expanded && showPreviews && item.fileUrl && item.contentType === 'image' && (
+                          <img
+                            src={item.fileUrl}
+                            alt=""
+                            className="w-11 h-11 object-cover border-[1.5px] border-ink flex-shrink-0 rotate-2 shadow-[2px_2px_0_var(--ink)] group-hover:rotate-0 transition-transform"
+                          />
+                        )}
+                      </div>
                     ) : (
                       <textarea
                         autoFocus
@@ -337,21 +361,54 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           className="overflow-hidden"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          {item.fileUrl && item.contentType === 'image' && (
-                            <div className="relative inline-block mt-4 mr-6">
+                          {/* Tipped-in photograph: matte frame, tape, caption */}
+                          {showPreviews && item.fileUrl && item.contentType === 'image' && (
+                            <figure className="relative inline-block mt-5 mr-6 -rotate-[0.6deg]">
                               <div
                                 aria-hidden
-                                className="absolute -top-2 left-8 w-14 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] z-10"
+                                className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] z-10 rotate-[-3deg]"
                                 style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
                               />
-                              <img src={item.fileUrl} alt="" className="max-h-72 border-[1.5px] border-ink" />
+                              <div className="bg-paper-raised border-[1.5px] border-ink p-2.5 pb-1.5 shadow-[4px_4px_0_var(--ink)]">
+                                <img src={item.fileUrl} alt={fileName(item)} className="max-h-72 border border-[var(--ink-line)]" />
+                                <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+                                  {plateCaption(item)}
+                                </figcaption>
+                              </div>
+                            </figure>
+                          )}
+
+                          {/* Document slip for PDFs */}
+                          {item.contentType === 'pdf' && (
+                            <div className="inline-flex items-center gap-4 mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] px-4 py-3 rotate-[0.4deg]">
+                              <span className="font-display text-3xl text-accent leading-none select-none">¶</span>
+                              <div>
+                                <p className="font-display text-base text-ink leading-tight">{fileName(item)}</p>
+                                <p className="font-label text-[8px] text-ink-faint uppercase mt-0.5">
+                                  {['Document', formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ')}
+                                </p>
+                              </div>
                             </div>
                           )}
+
+                          {/* Sound slip */}
                           {item.fileUrl && item.contentType === 'audio' && (
-                            <audio src={item.fileUrl} controls className="w-full mt-4" />
+                            <figure className="mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-3 max-w-md rotate-[-0.3deg]">
+                              <audio src={item.fileUrl} controls className="w-full" />
+                              <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+                                {['Recording', fileName(item), formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ')}
+                              </figcaption>
+                            </figure>
                           )}
-                          {item.fileUrl && item.contentType === 'video' && (
-                            <video src={item.fileUrl} controls className="max-h-72 mt-4 border-[1.5px] border-ink" />
+
+                          {/* Moving picture */}
+                          {showPreviews && item.fileUrl && item.contentType === 'video' && (
+                            <figure className="inline-block mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-2.5 pb-1.5 rotate-[0.3deg]">
+                              <video src={item.fileUrl} controls className="max-h-72 border border-[var(--ink-line)]" />
+                              <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+                                {plateCaption(item)}
+                              </figcaption>
+                            </figure>
                           )}
 
                           {item.summary && item.summary.length > 0 && !item.contentText.includes(item.summary) && (
