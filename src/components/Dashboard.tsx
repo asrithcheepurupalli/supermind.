@@ -17,6 +17,49 @@ import { formatDistanceToNow } from 'date-fns';
 import { useStore, defaultFilter } from '../store/useStore';
 import { SavedContent } from '../types';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
+import HeroGraph from './landing/HeroGraph';
+
+// Smooth 14-day activity sparkline rendered as an SVG area.
+function Sparkline({ items }: { items: SavedContent[] }) {
+  const points = React.useMemo(() => {
+    const counts: number[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      counts.push(items.filter(it => dayKey(it.timestamp) === dayKey(d)).length);
+    }
+    return counts;
+  }, [items]);
+
+  const max = Math.max(1, ...points);
+  const W = 240;
+  const H = 44;
+  const stepX = W / (points.length - 1);
+  const y = (v: number) => H - 4 - (v / max) * (H - 10);
+
+  let path = `M 0 ${y(points[0])}`;
+  for (let i = 1; i < points.length; i++) {
+    const x0 = (i - 1) * stepX;
+    const x1 = i * stepX;
+    const mid = (x0 + x1) / 2;
+    path += ` C ${mid} ${y(points[i - 1])}, ${mid} ${y(points[i])}, ${x1} ${y(points[i])}`;
+  }
+
+  if (points.every(p => p === 0)) return null;
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-11" preserveAspectRatio="none" aria-hidden>
+      <defs>
+        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={`${path} L ${W} ${H} L 0 ${H} Z`} fill="url(#sparkFill)" />
+      <path d={path} fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 // Animated count-up for stat numbers.
 const useCountUp = (target: number, duration = 900) => {
@@ -125,7 +168,9 @@ function StreakRing({ streak }: { streak: number }) {
 }
 
 export default function Dashboard() {
-  const { user, content, addContent, setUploadModalOpen, setActiveView, setFilter } = useStore();
+  const { user, content, addContent, setUploadModalOpen, setActiveView, setFilter, settings } = useStore();
+  const isDark = settings.theme === 'dark' ||
+    (settings.theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [quickNote, setQuickNote] = React.useState('');
   const [isCapturing, setIsCapturing] = React.useState(false);
 
@@ -144,6 +189,16 @@ export default function Dashboard() {
   const favorites = React.useMemo(() => items.filter(i => i.isFavorite).length, [items]);
   const memoryLane = React.useMemo(() => buildMemoryLane(items), [items]);
   const recent = items.slice(0, 4);
+
+  // Top tags feed the live mini-graph teaser.
+  const topTags = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      for (const tag of item.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
+    }
+    const tags = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([t]) => t);
+    return tags.length >= 4 ? tags : undefined;
+  }, [items]);
 
   const animatedTotal = useCountUp(items.length);
   const animatedToday = useCountUp(todayCount);
@@ -189,23 +244,28 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-3xl p-6 lg:p-8 flex items-center justify-between gap-6"
+        className="glow-frame glass-card rounded-3xl p-6 lg:p-8"
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-muted text-sm mb-1">
-            <CalendarDays size={14} />
-            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        <div className="flex items-center justify-between gap-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-muted text-sm mb-1">
+              <CalendarDays size={14} />
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </div>
+            <h1 className="text-3xl lg:text-4xl font-bold text-primary tracking-tight mb-2">
+              {greeting}, {firstName}.
+            </h1>
+            <p className="text-secondary">
+              {todayCount === 0
+                ? 'Nothing captured yet today — your future self is waiting.'
+                : `${todayCount} capture${todayCount !== 1 ? 's' : ''} today. Keep the thread going.`}
+            </p>
           </div>
-          <h1 className="text-3xl lg:text-4xl font-bold text-primary tracking-tight mb-2">
-            {greeting}, {firstName}.
-          </h1>
-          <p className="text-secondary">
-            {todayCount === 0
-              ? 'Nothing captured yet today — your future self is waiting.'
-              : `${todayCount} capture${todayCount !== 1 ? 's' : ''} today. Keep the thread going.`}
-          </p>
+          <StreakRing streak={streak} />
         </div>
-        <StreakRing streak={streak} />
+        <div className="mt-5 -mb-2">
+          <Sparkline items={items} />
+        </div>
       </motion.div>
 
       {/* Quick Capture */}
@@ -353,19 +413,17 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
           onClick={() => { hapticTap(); setActiveView('graph'); }}
-          className="haptic glass-card rounded-3xl p-6 lg:col-span-2 text-left relative overflow-hidden group hover:border-emerald-500/30 transition-colors"
+          className="haptic glass-card rounded-3xl lg:col-span-2 text-left relative overflow-hidden group hover:border-emerald-500/30 transition-colors min-h-[260px]"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.06] via-transparent to-blue-500/[0.08] group-hover:from-emerald-500/[0.1] group-hover:to-blue-500/[0.12] transition-colors" />
-          <div className="relative">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-blue-500 flex items-center justify-center mb-4">
-              <Network size={18} className="text-white" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white/70 dark:to-black/50 z-[1]" />
+          <HeroGraph labels={topTags} surface={isDark ? 'dark' : 'light'} className="absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute bottom-0 inset-x-0 p-6 z-[2]">
+            <div className="flex items-center gap-2 mb-1">
+              <Network size={15} className="text-emerald-500 dark:text-emerald-400" />
+              <h2 className="text-lg font-semibold text-primary">Knowledge Graph</h2>
             </div>
-            <h2 className="text-lg font-semibold text-primary mb-2">Knowledge Graph</h2>
-            <p className="text-secondary text-sm mb-4">
-              Watch your ideas connect — a living map of everything you've saved.
-            </p>
             <span className="text-emerald-600 dark:text-emerald-400 text-sm font-medium inline-flex items-center gap-1">
-              Explore <ArrowRight size={13} />
+              Watch your ideas connect <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
             </span>
           </div>
         </motion.button>

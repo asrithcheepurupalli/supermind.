@@ -98,6 +98,13 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Hero inputs: underline only — suppress the global focus ring */
+  .bare-input:focus-visible,
+  .bare-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   /* Haptic press physics: fast press-in, springy release */
   .haptic {
     transition: transform 90ms cubic-bezier(0.2, 0, 0.4, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
