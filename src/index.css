@@ -193,6 +193,14 @@
     transition: transform 90ms cubic-bezier(0.2, 0, 0.4, 1), border-bottom-width 90ms;
   }
 
+  /* .keycap's display beats Tailwind's `hidden`; restore it below the sm
+     breakpoint so `keycap hidden sm:inline-flex` behaves as written. */
+  @media (max-width: 639px) {
+    .keycap.hidden {
+      display: none;
+    }
+  }
+
   .cmd-strip:hover .keycap,
   .keycap-press:hover {
     transform: translateY(2px);

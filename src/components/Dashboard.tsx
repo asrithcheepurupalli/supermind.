@@ -214,7 +214,7 @@ export default function Dashboard() {
               placeholder="Capture a thought — it files itself…"
               className="bare-input font-display italic text-2xl w-full bg-transparent text-ink placeholder:text-[var(--ink-faint)] placeholder:not-italic outline-none resize-none border-b-2 border-ink focus:border-[var(--accent)] transition-colors pb-2 caret-[var(--accent)]"
             />
-            <span className="absolute right-0 -bottom-5 font-label text-[8px] text-ink-faint">⌘↵ to file it</span>
+            <span className="absolute right-0 -bottom-5 font-label text-[8px] text-ink-faint hidden sm:block">⌘↵ to file it</span>
           </div>
           <button
             onClick={handleQuickCapture}

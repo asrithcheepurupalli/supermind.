@@ -692,7 +692,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
 
           {([
             { id: 'graph', icon: Network, label: 'Graph' },
-            { id: 'profile', icon: User, label: 'Profile' },
+            { id: 'almanac', icon: BarChart3, label: 'Almanac' },
           ] as const).map((nav) => (
             <motion.button
               key={nav.id}

@@ -349,16 +349,18 @@ export default function KnowledgeGraph() {
           const label = n.tag.toUpperCase();
           const tw = ctx.measureText(label).width;
           const pad = 6;
+          // Keep the pill fully inside the canvas so edge nodes stay readable.
+          const lx = Math.max(tw / 2 + pad + 2, Math.min(width - tw / 2 - pad - 2, n.x));
           const ly = n.y - r - (isHovered ? 14 : 11);
           ctx.fillStyle = PAPER;
           ctx.strokeStyle = isHovered ? ACCENT : INK_LINE;
           ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.roundRect(n.x - tw / 2 - pad, ly - fontSize, tw + pad * 2, fontSize + 8, 2);
+          ctx.roundRect(lx - tw / 2 - pad, ly - fontSize, tw + pad * 2, fontSize + 8, 2);
           ctx.fill();
           ctx.stroke();
           ctx.fillStyle = INK;
-          ctx.fillText(label, n.x, ly + 3);
+          ctx.fillText(label, lx, ly + 3);
           if (isHovered) {
             ctx.font = `500 9px 'JetBrains Mono', ui-monospace, monospace`;
             ctx.fillStyle = ACCENT;
