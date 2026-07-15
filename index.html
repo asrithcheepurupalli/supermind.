@@ -9,11 +9,56 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="theme-color" content="#050508" />
+    <meta name="theme-color" content="#faf6ee" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#141310" media="(prefers-color-scheme: dark)" />
     <title>supermind. — Your Local-First Second Brain</title>
     <meta name="description" content="Capture notes, links, and files. supermind organizes them automatically and makes them instantly searchable — entirely on your device, with optional encryption at rest.">
+    <style>
+      /* Boot splash: shown until React mounts, then removed by main.tsx.
+         Styled inline so it renders before any bundle loads. */
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        background: #faf6ee;
+        transition: opacity 0.35s ease;
+      }
+      @media (prefers-color-scheme: dark) {
+        #boot { background: #141310; }
+        #boot .boot-word { color: #f2ecdd; }
+      }
+      #boot.boot-done { opacity: 0; pointer-events: none; }
+      #boot .boot-word {
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 34px;
+        letter-spacing: -0.02em;
+        color: #17150f;
+      }
+      #boot .boot-word::after { content: '.'; color: #f04e23; }
+      #boot .boot-rule {
+        width: 120px;
+        height: 2px;
+        background: #f04e23;
+        transform-origin: left;
+        animation: boot-draw 1.1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+      }
+      @keyframes boot-draw {
+        0% { transform: scaleX(0); opacity: 1; }
+        70% { transform: scaleX(1); opacity: 1; }
+        100% { transform: scaleX(1); opacity: 0; }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot" aria-hidden="true">
+      <span class="boot-word">supermind</span>
+      <span class="boot-rule"></span>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

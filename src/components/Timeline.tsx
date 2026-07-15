@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import {
   Star,
   ArrowUpDown,
+  Printer,
   ExternalLink,
   Lightbulb,
   Search,
@@ -183,6 +184,13 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
             title="Flip order"
           >
             <ArrowUpDown size={10} /> {sortAsc ? 'oldest first' : 'newest first'}
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="font-label text-[9px] text-ink-soft hover:text-ink transition-colors hidden sm:flex items-center gap-1 print:hidden"
+            title="Print this page"
+          >
+            <Printer size={10} /> print
           </button>
         </div>
       </div>

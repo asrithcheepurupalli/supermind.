@@ -928,16 +928,31 @@ button,
   }
 }
 
-/* Print Styles */
+/* Print: the Book and the Almanac already look like print — let them be it.
+   Chrome is hidden via print:hidden utilities; this handles paper + layout. */
 @media print {
-  .no-print {
-    display: none !important;
+  :root {
+    /* Always print on light paper, whatever the screen theme. */
+    --paper: #ffffff;
+    --paper-raised: #ffffff;
+    --ink: #17150f;
+    --ink-soft: rgba(23, 21, 15, 0.68);
+    --ink-faint: rgba(23, 21, 15, 0.45);
+    --ink-line: rgba(23, 21, 15, 0.2);
   }
-  
-  .glass,
-  .glass-card {
-    background: white !important;
-    border: 1px solid #ccc !important;
-    backdrop-filter: none !important;
+
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
   }
+
+  /* Unclip the app shell so the whole page flows onto paper. */
+  #root > div,
+  #root .overflow-hidden,
+  #root .overflow-y-auto {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .noise::before { display: none !important; }
 }

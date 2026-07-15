@@ -188,6 +188,17 @@ function App() {
     );
   }
 
+  // Shared view transition: the new page settles into place while the ink
+  // "dries" (a brief blur clearing). Honors the animations toggle.
+  const pageMotion = settings.display.animationsEnabled
+    ? {
+        initial: { opacity: 0, y: 18, filter: 'blur(3px)' },
+        animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+        exit: { opacity: 0, y: -14, filter: 'blur(2px)' },
+        transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const },
+      }
+    : { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 0 } };
+
   const viewSwitcher = [
     { id: 'timeline' as const, icon: Clock, label: 'Timeline' },
     { id: 'graph' as const, icon: Network, label: 'Graph' },
@@ -231,7 +242,7 @@ function App() {
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
+      <div className="hidden lg:block print:!hidden">
         <Sidebar
           categories={categories}
           filter={filter}
@@ -244,7 +255,7 @@ function App() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-paper border-b-[1.5px] border-ink px-4 lg:px-6 py-3.5 relative z-10"
+          className="bg-paper border-b-[1.5px] border-ink px-4 lg:px-6 py-3.5 relative z-10 print:hidden"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -493,9 +504,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
             {activeView === 'home' && (
               <motion.div
                 key="home"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                {...pageMotion}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
                 <Dashboard />
@@ -505,9 +514,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
             {activeView === 'graph' && (
               <motion.div
                 key="graph"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                {...pageMotion}
                 className="h-full"
               >
                 <KnowledgeGraph />
@@ -517,9 +524,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
             {activeView === 'timeline' && (
               <motion.div
                 key="timeline"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                {...pageMotion}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
                 <AnimatePresence>
@@ -567,9 +572,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
             {activeView === 'almanac' && (
               <motion.div
                 key="almanac"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                {...pageMotion}
                 className="h-full overflow-y-auto custom-scrollbar"
               >
                 <Almanac />
@@ -579,9 +582,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
             {activeView === 'profile' && (
               <motion.div
                 key="profile"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                {...pageMotion}
                 className="h-full p-6 overflow-y-auto custom-scrollbar"
               >
                 <div className="max-w-2xl mx-auto pb-24">
@@ -647,7 +648,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       {/* Floating Add Button (desktop) */}
       {activeView !== 'home' && (
         <motion.div
-          className="hidden sm:block fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-40"
+          className="hidden sm:block print:!hidden fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-40"
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
         >
@@ -661,7 +662,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       )}
 
       {/* Mobile Navigation */}
-      <div className="sm:hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
+      <div className="sm:hidden print:!hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
         <div className="card-ink-static flex items-center justify-center gap-4 py-2.5 px-6 rounded-sm">
           {([
             { id: 'home', icon: Grid, label: 'Home' },

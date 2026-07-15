@@ -14,6 +14,17 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
+// Fade out the boot splash once React has painted its first frame.
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    const boot = document.getElementById('boot');
+    if (boot) {
+      boot.classList.add('boot-done');
+      setTimeout(() => boot.remove(), 400);
+    }
+  });
+});
+
 // Offline support + PWA installability. Production only, so dev reloads stay instant.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

@@ -47,9 +47,15 @@ export default function Almanac() {
             Plate III · compiled{' '}
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
-          <p className="font-label text-[9px] text-ink-faint hidden sm:block">
-            all figures computed on this device
-          </p>
+          <div className="hidden sm:flex items-center gap-4">
+            <p className="font-label text-[9px] text-ink-faint">all figures computed on this device</p>
+            <button
+              onClick={() => window.print()}
+              className="btn-paper haptic px-3 py-1.5 rounded-sm font-label text-[9px] print:hidden"
+            >
+              print this page
+            </button>
+          </div>
         </div>
         <h2 className="font-display text-4xl sm:text-5xl text-ink leading-none mb-8">
           The almanac<span className="text-accent">.</span>

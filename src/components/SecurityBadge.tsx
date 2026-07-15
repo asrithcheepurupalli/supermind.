@@ -17,7 +17,7 @@ export default function SecurityBadge({ variant = 'floating' }: SecurityBadgePro
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="fixed bottom-4 left-4 z-40 hidden lg:block"
+      className="fixed bottom-4 left-4 z-40 hidden lg:block print:!hidden"
     >
       <div
         onMouseEnter={() => setIsHovered(true)}

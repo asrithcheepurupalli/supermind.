@@ -1,14 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#34d399"/>
-      <stop offset="100%" stop-color="#3b82f6"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="116" fill="url(#bg)"/>
-  <!-- four-point spark -->
-  <path d="M256 96c14 62 42 90 104 104-62 14-90 42-104 104-14-62-42-90-104-104 62-14 90-42 104-104z" fill="#fff"/>
-  <!-- small companion spark -->
-  <path d="M356 316c7 29 20 42 49 49-29 7-42 20-49 49-7-29-20-42-49-49 29-7 42-20 49-49z" fill="#fff" opacity="0.9"/>
-  <circle cx="152" cy="352" r="18" fill="#fff" opacity="0.75"/>
+  <!-- supermind: the full stop. A sentence ends; a thought is filed. -->
+  <style>
+    .paper { fill: #faf6ee; }
+    .ink { fill: #17150f; }
+    @media (prefers-color-scheme: dark) {
+      .paper { fill: #141310; }
+      .ink { fill: #f2ecdd; }
+    }
+  </style>
+  <rect class="paper" width="512" height="512" rx="96"/>
+  <!-- the tail of a written line, ending mid-page -->
+  <rect class="ink" x="88" y="330" width="180" height="26" rx="13"/>
+  <!-- the period -->
+  <circle cx="366" cy="343" r="78" fill="#f04e23"/>
 </svg>
