@@ -25,6 +25,12 @@ requestAnimationFrame(() => {
   });
 });
 
+// Ask the browser to treat our storage as persistent so notes are never
+// silently evicted under disk pressure. Best-effort; browsers may decline.
+if (navigator.storage?.persist) {
+  navigator.storage.persist().catch(() => {});
+}
+
 // Offline support + PWA installability. Production only, so dev reloads stay instant.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import MadeBadge from './MadeBadge';
 import {
   ArrowRight,
@@ -106,10 +106,227 @@ function TypedQuery() {
   );
 }
 
+/* ---------- the vision, revealed word by word as you scroll ---------- */
+
+// Styles: plain, m = marker, a = accent serif, s = struck through.
+const VISION: Array<{ w: string; s?: 'm' | 'a' | 's' }> = [
+  ...'Your thoughts are the'.split(' ').map(w => ({ w })),
+  ...'most personal data'.split(' ').map(w => ({ w, s: 'm' as const })),
+  ...'you will ever produce.'.split(' ').map(w => ({ w })),
+  ...'Somehow, we all ended up'.split(' ').map(w => ({ w })),
+  ...'renting them back'.split(' ').map(w => ({ w, s: 's' as const })),
+  ...'from companies, one subscription at a time.'.split(' ').map(w => ({ w })),
+  ...'supermind is our'.split(' ').map(w => ({ w })),
+  { w: 'refusal.', s: 'a' },
+  ...'A second brain built like a paper notebook:'.split(' ').map(w => ({ w })),
+  ...'private by default,'.split(' ').map(w => ({ w, s: 'm' as const })),
+  ...'yours forever,'.split(' ').map(w => ({ w, s: 'm' as const })),
+  ...'calm on purpose.'.split(' ').map(w => ({ w, s: 'm' as const })),
+  ...'It never phones home.'.split(' ').map(w => ({ w })),
+  ...'There is no home to phone.'.split(' ').map(w => ({ w, s: 'a' as const })),
+];
+
+function VisionWord({ progress, index, total, word, style }: {
+  progress: ReturnType<typeof useScroll>['scrollYProgress'];
+  index: number; total: number; word: string; style?: 'm' | 'a' | 's';
+}) {
+  const start = index / total;
+  const opacity = useTransform(progress, [start, start + 0.02], [0.08, 1]);
+  const cls =
+    style === 'm' ? 'marker' :
+    style === 'a' ? 'text-accent italic' :
+    style === 's' ? 'line-through decoration-[var(--accent)] decoration-[0.06em] text-ink-soft' : '';
+  return (
+    <motion.span style={{ opacity }} className={`inline ${cls}`}>
+      {word}{' '}
+    </motion.span>
+  );
+}
+
+function VisionManifesto() {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 0.72', 'end 0.55'] });
+  return (
+    <section className="border-b-[1.5px] border-ink">
+      <div ref={ref} className="max-w-4xl mx-auto px-6 py-36">
+        <p className="font-label text-[11px] text-accent mb-10">[ why this exists ]</p>
+        <p className="font-display text-3xl md:text-5xl leading-[1.28] tracking-tight text-ink">
+          {VISION.map((v, i) => (
+            <VisionWord
+              key={`${v.w}-${i}`}
+              progress={scrollYProgress}
+              index={i}
+              total={VISION.length}
+              word={v.w}
+              style={v.s}
+            />
+          ))}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/* ---------- three beliefs, one pinned visual ---------- */
+
+function Belief({ index, kicker, title, children, onActive }: {
+  index: number; kicker: string; title: string; children: React.ReactNode;
+  onActive: (i: number) => void;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { margin: '-45% 0px -45% 0px' });
+  React.useEffect(() => { if (inView) onActive(index); }, [inView, index, onActive]);
+  return (
+    <div ref={ref} className="min-h-[58vh] flex flex-col justify-center">
+      <p className="font-label text-[10px] text-accent mb-3">{kicker}</p>
+      <h3 className="font-display text-4xl md:text-5xl text-ink mb-5 leading-tight">{title}</h3>
+      <div className="text-ink-soft text-lg leading-relaxed max-w-md">{children}</div>
+    </div>
+  );
+}
+
+function BeliefDemo({ belief }: { belief: number }) {
+  return (
+    <div className="card-ink-static rounded-sm p-6 min-h-[360px] relative overflow-hidden">
+      <div className="font-label text-[9px] text-ink-faint mb-5">
+        {['exhibit a · the seal', 'exhibit b · the archive', 'exhibit c · the quiet'][belief]}
+      </div>
+      <AnimatePresence mode="wait">
+        {belief === 0 && (
+          <motion.div key="seal" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div className="ruled pb-4 mb-5">
+              <p className="font-display text-xl text-ink leading-[30px]">
+                Therapy notes, salary numbers, the half-written resignation letter.
+              </p>
+            </div>
+            <motion.span
+              initial={{ opacity: 0, scale: 2.2, rotate: 8 }} animate={{ opacity: 1, scale: 1, rotate: -3 }}
+              transition={{ delay: 0.5, type: 'spring', stiffness: 300, damping: 15 }}
+              className="stamp !border-[var(--accent)] !text-[var(--accent)] inline-block mb-6"
+            >
+              Sealed
+            </motion.span>
+            {[['network requests', '0'], ['analytics events', '0'], ['people who can read this', '1']].map(([k, v], i) => (
+              <motion.div
+                key={k} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 + i * 0.25 }}
+                className="flex justify-between py-1.5 border-b border-dotted border-[var(--ink-line)] last:border-0"
+              >
+                <span className="font-label text-[9px] text-ink-soft">{k}</span>
+                <span className="font-mono text-xs text-ink tabular-nums">{v}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+        {belief === 1 && (
+          <motion.div key="archive" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div className="space-y-2 mb-6">
+              {[
+                ['a beloved notes app', '2008 · 2021'],
+                ['a bookmarks startup', '2012 · 2017'],
+                ['that wiki you invested in', '2016 · 2023'],
+              ].map(([name, years], i) => (
+                <motion.div
+                  key={name} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 0.55, x: 0 }} transition={{ delay: 0.2 + i * 0.25 }}
+                  className="flex items-baseline justify-between border border-[var(--ink-line)] rounded-t-xl rounded-b-sm px-4 py-2.5"
+                >
+                  <span className="font-display italic text-ink-soft">{name}</span>
+                  <span className="font-label text-[8px] text-ink-faint">{years} · took the notes with it</span>
+                </motion.div>
+              ))}
+            </div>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.1 }}
+              className="card-ink-static rounded-sm px-4 py-3 rotate-[-0.5deg]"
+            >
+              <p className="font-mono text-sm text-ink">supermind-backup.json</p>
+              <p className="font-label text-[8px] text-ink-faint mt-1">
+                one click · plain text · readable in any editor, in any decade
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+        {belief === 2 && (
+          <motion.div key="quiet" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div className="space-y-2 mb-8">
+              {['🔔 14 unread notifications', 'Your streak is about to expire!', 'Someone mentioned you'].map((t, i) => (
+                <motion.div
+                  key={t}
+                  initial={{ opacity: 0.7 }}
+                  animate={{ opacity: 0.16, x: i % 2 ? 6 : -4 }}
+                  transition={{ delay: 0.5 + i * 0.3, duration: 0.8 }}
+                  className="border border-[var(--ink-line)] rounded-sm px-4 py-2 text-sm text-ink-soft line-through decoration-[var(--ink-line)]"
+                >
+                  {t}
+                </motion.div>
+              ))}
+            </div>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.6 }} className="ruled">
+              <p className="font-display italic text-xl text-ink leading-[30px]">
+                Today you wrote one good thought. That was the whole event.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function Beliefs() {
+  const [belief, setBelief] = React.useState(0);
+  const onActive = React.useCallback((i: number) => setBelief(i), []);
+  return (
+    <section className="border-y-[1.5px] border-ink bg-paper-raised">
+      <div className="max-w-6xl mx-auto px-6 py-24">
+        <div className="text-center mb-2">
+          <p className="font-label text-[10px] text-accent mb-3">[ what we believe ]</p>
+          <h2 className="font-display text-4xl md:text-6xl tracking-tight text-ink">
+            Three beliefs, <em className="marker-accent">set in ink</em>.
+          </h2>
+        </div>
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20">
+          <div>
+            <Belief index={0} kicker="belief one" title="Private by default." onActive={onActive}>
+              <p>
+                Thinking needs a door that closes. Every note is processed on this
+                device, and encryption seals the archive with a key only you hold.
+                Privacy here is not a settings toggle or a policy page. It is the
+                architecture.
+              </p>
+            </Belief>
+            <Belief index={1} kicker="belief two" title="Yours forever." onActive={onActive}>
+              <p>
+                Apps die and take their exports with them. Your entire supermind is
+                one readable JSON file, one click away, openable in any text editor
+                in any decade. A notebook should outlive the company that printed it.
+              </p>
+            </Belief>
+            <Belief index={2} kicker="belief three" title="Calm on purpose." onActive={onActive}>
+              <p>
+                No feed, no streak guilt, no red dots begging to be tapped. Paper
+                never interrupted anyone. The most advanced feature here is how
+                quiet it is.
+              </p>
+            </Belief>
+          </div>
+          <div className="hidden lg:block">
+            <div className="sticky top-24 pt-16">
+              <BeliefDemo belief={belief} />
+            </div>
+          </div>
+        </div>
+        <div className="lg:hidden mt-6">
+          <BeliefDemo belief={belief} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------- page ---------- */
 
 export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps) {
-  const { scrollY } = useScroll();
+  const { scrollY, scrollYProgress } = useScroll();
   const collageY = useTransform(scrollY, [0, 700], [0, -60]);
 
   // ⌘K works right here on the landing page — it takes you into the notebook.
@@ -261,6 +478,13 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
 
   return (
     <div className="min-h-screen bg-paper text-ink relative overflow-x-hidden noise">
+      {/* Reading progress: an ink rule drawing itself across the top */}
+      <motion.div
+        aria-hidden
+        style={{ scaleX: scrollYProgress }}
+        className="fixed top-0 left-0 right-0 h-[3px] bg-accent origin-left z-50"
+      />
+
       {/* Nav */}
       <motion.header
         initial={{ opacity: 0, y: -12 }}
@@ -425,6 +649,9 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
         </div>
       </div>
 
+      {/* The vision, revealed as you read */}
+      <VisionManifesto />
+
       {/* Chapters */}
       <section className="max-w-6xl mx-auto px-6 py-28 space-y-28">
         {chapters.map((chapter, i) => (
@@ -450,6 +677,9 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
           </motion.div>
         ))}
       </section>
+
+      {/* Three beliefs */}
+      <Beliefs />
 
       {/* Command strip */}
       <section className="border-y-[1.5px] border-ink bg-paper-raised">
