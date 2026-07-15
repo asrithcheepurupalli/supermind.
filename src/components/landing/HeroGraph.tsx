@@ -7,6 +7,8 @@ import React from 'react';
 interface HeroGraphProps {
   labels?: string[];
   className?: string;
+  // Surface the graph is drawn onto; controls edge/label/ring inks.
+  surface?: 'dark' | 'light';
 }
 
 const DEFAULT_LABELS = [
@@ -22,7 +24,7 @@ interface Node {
   r: number; hue: number; phase: number;
 }
 
-export default function HeroGraph({ labels = DEFAULT_LABELS, className = '' }: HeroGraphProps) {
+export default function HeroGraph({ labels = DEFAULT_LABELS, className = '', surface = 'dark' }: HeroGraphProps) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
@@ -111,7 +113,7 @@ export default function HeroGraph({ labels = DEFAULT_LABELS, className = '' }: H
       ctx.clearRect(0, 0, width, height);
 
       for (const [a, b] of edges) {
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        ctx.strokeStyle = surface === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(nodes[a].x, nodes[a].y);
@@ -138,18 +140,18 @@ export default function HeroGraph({ labels = DEFAULT_LABELS, className = '' }: H
         ctx.arc(n.x, n.y, r * 2.4, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = `hsla(${n.hue}, 72%, 58%, 1)`;
+        ctx.fillStyle = `hsla(${n.hue}, 72%, ${surface === 'dark' ? 58 : 48}%, 1)`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+        ctx.strokeStyle = surface === 'dark' ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.9)';
         ctx.lineWidth = 2;
         ctx.stroke();
 
         if (n.r > 11) {
           ctx.font = "500 11px 'Inter Variable', -apple-system, sans-serif";
           ctx.textAlign = 'center';
-          ctx.fillStyle = 'rgba(243,244,246,0.9)';
+          ctx.fillStyle = surface === 'dark' ? 'rgba(243,244,246,0.9)' : 'rgba(17,24,39,0.85)';
           ctx.fillText(n.label, n.x, n.y - r - 6);
         }
       }
@@ -163,7 +165,7 @@ export default function HeroGraph({ labels = DEFAULT_LABELS, className = '' }: H
       cancelAnimationFrame(frame);
       window.removeEventListener('resize', resize);
     };
-  }, [labels]);
+  }, [labels, surface]);
 
   return (
     <div ref={containerRef} className={className || 'relative w-full h-full'}>
