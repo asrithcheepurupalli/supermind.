@@ -37,6 +37,7 @@ const defaultSettings: AppSettings = {
     compactMode: false,
     showPreviews: true,
     animationsEnabled: true,
+    startPage: 'home',
   },
   security: {
     encryptionEnabled: false,

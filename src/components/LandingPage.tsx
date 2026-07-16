@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import MadeBadge from './MadeBadge';
 import { useLenis } from '../hooks/useLenis';
+import ThemeToggle from './ThemeToggle';
 import {
   ArrowRight,
   ArrowDown,
@@ -509,7 +510,8 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
             <span className="font-display text-3xl tracking-tight">supermind</span>
             <span className="w-2 h-2 rounded-full bg-accent inline-block transition-transform duration-300 group-hover:scale-[1.6]" />
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6">
+            <ThemeToggle />
             <button onClick={onAbout} className="font-label text-xs text-ink-soft hover:text-ink transition-colors">
               About
             </button>

@@ -3,6 +3,7 @@ import { motion, useScroll, useTransform, useInView, AnimatePresence, type Motio
 import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
 import MadeBadge from './MadeBadge';
 import { useLenis } from '../hooks/useLenis';
+import ThemeToggle from './ThemeToggle';
 
 interface AboutPageProps {
   onBack: () => void;
@@ -331,12 +332,15 @@ export default function AboutPage({ onBack }: AboutPageProps) {
             <span className="font-display text-xl tracking-tight">supermind</span>
             <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
           </div>
-          <button
-            onClick={onBack}
-            className="btn-paper haptic px-4 py-2 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
-          >
-            <ArrowLeft size={12} /> Back
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <button
+              onClick={onBack}
+              className="btn-paper haptic px-4 py-2 rounded-sm font-label text-[10px] inline-flex items-center gap-2"
+            >
+              <ArrowLeft size={12} /> Back
+            </button>
+          </div>
         </div>
       </header>
 

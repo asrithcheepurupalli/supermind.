@@ -83,6 +83,7 @@ export interface AppSettings {
     compactMode: boolean;
     showPreviews: boolean;
     animationsEnabled: boolean;
+    startPage?: 'home' | 'timeline';
   };
   security: {
     encryptionEnabled: boolean;

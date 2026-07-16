@@ -21,6 +21,7 @@ import Dashboard from './components/Dashboard';
 import KnowledgeGraph from './components/KnowledgeGraph';
 import CommandPalette from './components/CommandPalette';
 import Legend from './components/Legend';
+import ThemeToggle from './components/ThemeToggle';
 import MadeBadge from './components/MadeBadge';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -143,6 +144,15 @@ function App() {
     }
     return items.slice(0, 6);
   }, [content, remindersEnabled]);
+
+  // Land on the page the user chose in Settings → Display.
+  React.useEffect(() => {
+    const start = useStore.getState().settings.display.startPage;
+    if (useStore.getState().isAuthenticated && start === 'timeline') {
+      setActiveView('timeline');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   React.useEffect(() => {
     if (window.location.hash === '#about') {
@@ -433,6 +443,8 @@ function App() {
                 )}
               </div>
 
+              <ThemeToggle />
+
               {/* Notifications */}
               <div className="relative">
                 <motion.button
@@ -670,7 +682,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
                     {[
                       { icon: Settings, label: 'Settings', detail: 'the fine print, all sections', action: () => setSettingsModalOpen(true) },
                       { icon: Shield, label: 'Privacy & Security', detail: 'encryption, auto-lock, the seal', action: () => setSettingsModalOpen(true, 'security') },
-                      { icon: CalendarClock, label: 'Reminders', detail: 'deadline detection on or off', action: () => setSettingsModalOpen(true, 'notifications') },
+                      { icon: CalendarClock, label: 'Smart Features', detail: 'tagging, summaries, reminders', action: () => setSettingsModalOpen(true, 'ai') },
                       {
                         icon: Download,
                         label: 'Export everything',

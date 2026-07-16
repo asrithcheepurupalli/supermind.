@@ -8,7 +8,6 @@ import toast from 'react-hot-toast';
 const sections = [
   { id: 'profile', label: 'Profile' },
   { id: 'security', label: 'Security' },
-  { id: 'notifications', label: 'Reminders' },
   { id: 'ai', label: 'Smart Features' },
   { id: 'display', label: 'Display' },
   { id: 'data', label: 'Data & Storage' },
@@ -66,9 +65,20 @@ export default function SettingsModal() {
     setEncryptionModalOpen,
     lock,
     logout,
+    setUser,
+    setLegendOpen,
   } = useStore();
 
   const [activeSection, setActiveSection] = React.useState('profile');
+  const [editingProfile, setEditingProfile] = React.useState(false);
+  const [draftName, setDraftName] = React.useState('');
+  const [draftEmail, setDraftEmail] = React.useState('');
+  const saveProfile = () => {
+    if (!draftName.trim() || !user) return;
+    setUser({ ...user, name: draftName.trim(), email: draftEmail.trim() });
+    setEditingProfile(false);
+    toast.success('Profile updated');
+  };
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const securityScore = getSecurityScore();
 
@@ -128,6 +138,31 @@ export default function SettingsModal() {
     reader.readAsText(file);
   };
 
+  const handleExportMarkdown = () => {
+    const items = [...content].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    const lines = [`# supermind`, '', `Exported ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · ${items.length} entries`, ''];
+    for (const item of items) {
+      lines.push(`## ${item.timestamp.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} · ${item.contentType}`);
+      lines.push('');
+      lines.push(item.contentText);
+      if (item.tags.length) {
+        lines.push('');
+        lines.push(item.tags.map(t => `#${t}`).join(' '));
+      }
+      lines.push('');
+      lines.push('---');
+      lines.push('');
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `supermind-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Markdown downloaded');
+  };
+
   const handleEraseNotebook = () => {
     if (!window.confirm('Erase this notebook? Your profile, settings, and all ' + content.length + ' entries will be gone from this device. Export a backup first if anything matters.')) {
       return;
@@ -146,10 +181,42 @@ export default function SettingsModal() {
   const renderProfile = () => (
     <div>
       <p className="font-label text-[9px] text-ink-faint mb-1">this notebook belongs to</p>
-      <h3 className="font-display text-3xl text-ink mb-1">
-        <span className="marker">{user?.name || 'You'}</span>
-      </h3>
-      {user?.email && <p className="font-mono text-xs text-ink-soft">{user.email}</p>}
+      {editingProfile ? (
+        <div className="space-y-3 mb-2 max-w-xs">
+          <input
+            autoFocus
+            value={draftName}
+            onChange={(e) => setDraftName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveProfile()}
+            placeholder="Your name"
+            className="bare-input font-display text-3xl w-full bg-transparent text-ink outline-none border-b-2 border-[var(--accent)] pb-1 caret-[var(--accent)]"
+          />
+          <input
+            value={draftEmail}
+            onChange={(e) => setDraftEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveProfile()}
+            placeholder="email, optional"
+            className="bare-input font-mono text-xs w-full bg-transparent text-ink-soft outline-none border-b border-[var(--ink-line)] focus:border-[var(--accent)] pb-1"
+          />
+          <div className="flex gap-3 pt-1">
+            <button onClick={saveProfile} className="btn-ink haptic px-4 py-1.5 rounded-sm text-xs font-semibold">Save</button>
+            <button onClick={() => setEditingProfile(false)} className="font-label text-[9px] text-ink-faint hover:text-ink transition-colors">cancel</button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <h3 className="font-display text-3xl text-ink mb-1">
+            <span className="marker">{user?.name || 'You'}</span>
+            <button
+              onClick={() => { setDraftName(user?.name ?? ''); setDraftEmail(user?.email ?? ''); setEditingProfile(true); }}
+              className="haptic font-label text-[9px] text-ink-faint hover:text-accent transition-colors ml-3 align-middle"
+            >
+              edit
+            </button>
+          </h3>
+          {user?.email && <p className="font-mono text-xs text-ink-soft">{user.email}</p>}
+        </>
+      )}
       <p className="font-label text-[9px] text-accent mt-3">local profile · data stays on this device</p>
 
       <div className="grid grid-cols-3 border-y-2 border-[var(--ink)] divide-x divide-[var(--ink-line)] mt-8">
@@ -274,26 +341,6 @@ export default function SettingsModal() {
     </div>
   );
 
-  const renderNotifications = () => (
-    <div>
-      <Row
-        title="Smart reminders"
-        detail="Detect deadlines and follow-ups in your notes and surface them in the reminders panel."
-      >
-        <InkCheck
-          value={settings.notifications.reminders}
-          onChange={() => updateSettings({
-            notifications: { ...settings.notifications, reminders: !settings.notifications.reminders },
-          })}
-        />
-      </Row>
-      <p className="font-label text-[9px] text-ink-faint mt-5 leading-relaxed">
-        supermind is fully local. There are no emails or push notifications, so there is
-        nothing else to configure here.
-      </p>
-    </div>
-  );
-
   const renderAi = () => (
     <div>
       {([
@@ -308,6 +355,17 @@ export default function SettingsModal() {
           />
         </Row>
       ))}
+      <Row
+        title="Smart reminders"
+        detail="Notice deadlines and follow-ups in your notes and surface them in the bell."
+      >
+        <InkCheck
+          value={settings.notifications.reminders}
+          onChange={() => updateSettings({
+            notifications: { ...settings.notifications, reminders: !settings.notifications.reminders },
+          })}
+        />
+      </Row>
       <p className="font-label text-[9px] text-ink-faint mt-5">
         all processing runs on your device. nothing is sent to any server.
       </p>
@@ -360,6 +418,31 @@ export default function SettingsModal() {
           />
         </Row>
       ))}
+
+      <Row title="Open the notebook to" detail="The page you land on when supermind starts.">
+        <div className="flex flex-shrink-0">
+          {([['home', "today's page"], ['timeline', 'the book']] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => { hapticTap(); updateSettings({ display: { ...settings.display, startPage: key } }); }}
+              className={`haptic font-label text-[9px] px-3 py-1.5 border-[1.5px] border-ink first:rounded-l-sm last:rounded-r-sm last:border-l-0 transition-colors ${
+                (settings.display.startPage ?? 'home') === key ? 'bg-ink text-paper' : 'bg-transparent text-ink-soft hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </Row>
+
+      <Row title="Keyboard shortcuts" detail="Every key the notebook answers to.">
+        <button
+          onClick={() => { setSettingsModalOpen(false); setLegendOpen(true); }}
+          className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex-shrink-0"
+        >
+          The legend
+        </button>
+      </Row>
     </div>
   );
 
@@ -388,6 +471,15 @@ export default function SettingsModal() {
           className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
         >
           <Download size={12} /> Export
+        </button>
+      </Row>
+
+      <Row title="Export as Markdown" detail="A plain .md file of every entry, readable anywhere, forever.">
+        <button
+          onClick={handleExportMarkdown}
+          className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
+        >
+          <Download size={12} /> Markdown
         </button>
       </Row>
 
@@ -441,7 +533,6 @@ export default function SettingsModal() {
     switch (activeSection) {
       case 'profile': return renderProfile();
       case 'security': return renderSecurity();
-      case 'notifications': return renderNotifications();
       case 'ai': return renderAi();
       case 'display': return renderDisplay();
       default: return renderData();
