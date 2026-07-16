@@ -379,6 +379,16 @@
   animation: marquee 22s linear infinite;
 }
 
+/* Fresh ink: a just-filed entry settles into the page */
+@keyframes inkflash {
+  0% { background-color: var(--accent-soft); }
+  100% { background-color: transparent; }
+}
+
+.inkflash {
+  animation: inkflash 1.6s ease-out both;
+}
+
 /* Focus States */
 button:focus-visible,
 input:focus-visible,

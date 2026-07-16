@@ -254,13 +254,14 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
             {items.map((item) => {
               const expanded = expandedId === item.id;
               const editing = editingId === item.id;
+              const freshInk = Date.now() - item.timestamp.getTime() < 6000;
               return (
                 <motion.article
                   key={item.id}
                   layout="position"
                   className={`group grid grid-cols-[64px_1fr] gap-4 border-b border-[var(--ink-line)] transition-colors ${
                     expanded ? 'bg-paper-raised -mx-4 px-4 border-[var(--ink-line)]' : 'hover:bg-[var(--accent-soft)]/40'
-                  }`}
+                  } ${freshInk && !expanded ? 'inkflash' : ''}`}
                 >
                   {/* Margin column */}
                   <div className="py-3.5 text-right select-none">

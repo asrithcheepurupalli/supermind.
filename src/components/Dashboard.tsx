@@ -1,9 +1,10 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   ArrowRight,
   Send,
+  Check,
   History,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -115,6 +116,7 @@ export default function Dashboard() {
   const captureRef = React.useRef<HTMLTextAreaElement>(null);
   const [quickNote, setQuickNote] = React.useState('');
   const [isCapturing, setIsCapturing] = React.useState(false);
+  const [justFiled, setJustFiled] = React.useState(false);
 
   const items = React.useMemo(
     () => content
@@ -161,6 +163,8 @@ export default function Dashboard() {
       });
       hapticSuccess();
       setQuickNote('');
+      setJustFiled(true);
+      window.setTimeout(() => setJustFiled(false), 1100);
     } finally {
       setIsCapturing(false);
     }
@@ -306,11 +310,28 @@ export default function Dashboard() {
           </div>
           <button
             onClick={handleQuickCapture}
-            disabled={!quickNote.trim() || isCapturing}
+            disabled={(!quickNote.trim() && !justFiled) || isCapturing}
             className="btn-ink haptic w-11 h-11 rounded-sm flex items-center justify-center disabled:opacity-30 disabled:pointer-events-none flex-shrink-0"
             aria-label="Capture"
           >
-            <Send size={16} />
+            <AnimatePresence mode="wait" initial={false}>
+              {justFiled ? (
+                <motion.span
+                  key="filed"
+                  initial={{ scale: 0.4, rotate: -30, opacity: 0 }}
+                  animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                  exit={{ scale: 0.6, opacity: 0 }}
+                  transition={{ type: 'spring', stiffness: 520, damping: 20 }}
+                  className="flex"
+                >
+                  <Check size={16} strokeWidth={3} />
+                </motion.span>
+              ) : (
+                <motion.span key="send" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex">
+                  <Send size={16} />
+                </motion.span>
+              )}
+            </AnimatePresence>
           </button>
         </div>
       </motion.div>

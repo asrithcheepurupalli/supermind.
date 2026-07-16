@@ -161,12 +161,35 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // /about is a real address: recognize it on arrival (the old #about hash
+  // still works) and keep the back button honest between the two pages.
   React.useEffect(() => {
-    if (window.location.hash === '#about') {
+    if (window.location.pathname === '/about' || window.location.hash === '#about') {
       setShowAbout(true);
       setShowLanding(false);
     }
+    const onPopState = () => {
+      const onAbout = window.location.pathname === '/about';
+      setShowAbout(onAbout);
+      if (!onAbout && !useStore.getState().isAuthenticated) setShowLanding(true);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
+
+  // Each address gets its own title and canonical, so /about stands on its
+  // own in search instead of collapsing into the homepage.
+  React.useEffect(() => {
+    if (sharedNote) return; // a passed note sets its own title
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (showAbout) {
+      document.title = 'The story of a thought · supermind';
+      if (canonical) canonical.href = 'https://supermind.ink/about';
+    } else {
+      document.title = 'supermind. A second brain that stays on your device';
+      if (canonical) canonical.href = 'https://supermind.ink/';
+    }
+  }, [showAbout, sharedNote]);
 
   // Apply theme
   React.useEffect(() => {
