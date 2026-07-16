@@ -31,6 +31,7 @@ import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
+import { Analytics } from '@vercel/analytics/react';
 
 // Build a capture item from raw text; single URLs become links.
 const makeCapture = (text: string, fileUrl?: string, contentType?: SavedContent['contentType']): SavedContent => {
@@ -849,6 +850,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 
       <Toast />
+      <Analytics />
     </div>
   );
 }
