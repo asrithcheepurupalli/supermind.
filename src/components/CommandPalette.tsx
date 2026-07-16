@@ -280,7 +280,7 @@ export default function CommandPalette() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[70] flex items-start justify-center pt-[15vh] px-4"
+          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[70] flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
           onClick={close}
         >
           <motion.div
@@ -331,7 +331,7 @@ export default function CommandPalette() {
                     </div>
                     <span className="flex-1 text-ink text-sm truncate">{row.label}</span>
                     {row.hint && (
-                      <span className="font-label text-[9px] text-ink-faint flex-shrink-0">{row.hint}</span>
+                      <span className="font-label text-[9px] text-ink-faint flex-shrink-0 hidden sm:inline">{row.hint}</span>
                     )}
                     {index === selected && (
                       <CornerDownLeft size={13} className="text-accent flex-shrink-0" />
@@ -343,8 +343,9 @@ export default function CommandPalette() {
 
             {/* Footer */}
             <div className="flex items-center gap-4 px-5 py-2.5 border-t-[1.5px] border-ink font-label text-[9px] text-ink-faint">
-              <span className="flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↑↓</kbd> navigate</span>
-              <span className="flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↵</kbd> select</span>
+              <span className="hidden sm:flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↑↓</kbd> navigate</span>
+              <span className="hidden sm:flex items-center gap-1.5"><kbd className="keycap text-[8px] !py-0 !px-1">↵</kbd> select</span>
+              <span className="sm:hidden">tap a result to open it</span>
               <span className="ml-auto flex items-baseline gap-0.5">supermind<span className="w-1 h-1 rounded-full bg-accent inline-block" /></span>
             </div>
           </motion.div>

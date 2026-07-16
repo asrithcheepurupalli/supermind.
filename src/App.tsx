@@ -458,6 +458,16 @@ function App() {
                 <Menu size={20} />
               </motion.button>
 
+              {/* On phones the palette is the search box */}
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => { hapticTap(); setCommandPaletteOpen(true); }}
+                aria-label="Search everything"
+                className="sm:hidden btn-paper haptic p-2 rounded-sm"
+              >
+                <Search size={18} />
+              </motion.button>
+
               {/* Search */}
               <div className="relative hidden sm:block">
                 <motion.div

@@ -12,6 +12,9 @@ import { useStore, defaultFilter } from '../store/useStore';
 import { SavedContent } from '../types';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 
+// Phones get thumb-first wording; keyboards get shortcuts.
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 const computeStreak = (items: SavedContent[]): number => {
@@ -243,8 +246,10 @@ export default function Dashboard() {
               },
               {
                 done: firstRun.palette,
-                title: 'Find anything with ⌘K',
-                detail: 'the palette searches everything you write',
+                title: isTouch ? 'Find anything with search' : 'Find anything with ⌘K',
+                detail: isTouch
+                  ? 'the magnifier up top searches everything you write'
+                  : 'the palette searches everything you write',
                 act: () => setCommandPaletteOpen(true),
               },
               {

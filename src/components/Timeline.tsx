@@ -153,8 +153,14 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
   const shareLink = async (item: SavedContent) => {
     hapticTap();
+    const url = buildShareUrl(item);
+    // Phones get the real share sheet; desks get the clipboard.
+    if (window.matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ url })) {
+      await navigator.share({ url, title: 'A note, passed to you' }).catch(() => {});
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(buildShareUrl(item));
+      await navigator.clipboard.writeText(url);
       toast.success('Link copied. The note travels inside it; no server involved.');
     } catch {
       toast.error('Could not reach the clipboard');
@@ -400,54 +406,54 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                             </p>
                           )}
 
-                          {/* Marginalia actions */}
-                          <div className="flex items-center gap-1 mt-5 mb-1 font-label text-[9px] text-ink-soft">
+                          {/* Marginalia actions: thumb-sized on phones, pencil-sized on desks */}
+                          <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-4 sm:mt-5 mb-1 font-label text-[10px] sm:text-[9px] text-ink-soft">
                             {(item.contentType === 'link' || item.fileUrl || urlInText(item.contentText)) && (
                               <>
-                                <button onClick={() => openLink(item)} className="hover:text-accent transition-colors flex items-center gap-1">
+                                <button onClick={() => openLink(item)} className="hover:text-accent transition-colors flex items-center gap-1 py-2 sm:py-0">
                                   open <ExternalLink size={9} />
                                 </button>
-                                <span className="text-ink-faint mx-2">·</span>
+                                <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
                               </>
                             )}
                             <button
                               onClick={() => { navigator.clipboard.writeText(item.contentText); toast.success('Copied'); }}
-                              className="hover:text-accent transition-colors"
+                              className="hover:text-accent transition-colors py-2 sm:py-0"
                             >
                               copy
                             </button>
                             {(item.contentType === 'text' || item.contentType === 'link') && (
                               <>
-                                <span className="text-ink-faint mx-2">·</span>
+                                <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
                                 <button
                                   onClick={() => shareLink(item)}
-                                  title="Copy a link that carries this note inside it"
-                                  className="hover:text-accent transition-colors"
+                                  title="Share a link that carries this note inside it"
+                                  className="hover:text-accent transition-colors py-2 sm:py-0"
                                 >
                                   pass it on
                                 </button>
-                                <span className="text-ink-faint mx-2">·</span>
+                                <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
                                 <button
                                   onClick={() => shareCard(item)}
                                   title="Download this note as an image card"
-                                  className="hover:text-accent transition-colors"
+                                  className="hover:text-accent transition-colors py-2 sm:py-0"
                                 >
                                   card
                                 </button>
                               </>
                             )}
-                            <span className="text-ink-faint mx-2">·</span>
-                            <button onClick={() => startEdit(item)} className="hover:text-accent transition-colors">
+                            <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
+                            <button onClick={() => startEdit(item)} className="hover:text-accent transition-colors py-2 sm:py-0">
                               edit
                             </button>
-                            <span className="text-ink-faint mx-2">·</span>
+                            <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
                             <button
                               onClick={() => handleDelete(item.id)}
-                              className={`transition-colors ${confirmingDelete === item.id ? 'text-accent' : 'hover:text-accent'}`}
+                              className={`transition-colors py-2 sm:py-0 ${confirmingDelete === item.id ? 'text-accent' : 'hover:text-accent'}`}
                             >
                               {confirmingDelete === item.id ? 'sure? tap again' : 'remove'}
                             </button>
-                            <span className="ml-auto text-ink-faint capitalize">{item.category} · {item.sourceApp.toLowerCase()}</span>
+                            <span className="ml-auto text-ink-faint capitalize hidden sm:inline">{item.category} · {item.sourceApp.toLowerCase()}</span>
                           </div>
                         </motion.div>
                       )}

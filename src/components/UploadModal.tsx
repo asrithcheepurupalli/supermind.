@@ -253,6 +253,8 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
 
   const wordCount = textInput.trim() ? textInput.trim().split(/\s+/).length : 0;
   const canFile = (textInput.trim().length > 0 || linkInput.trim().length > 0 || staged.length > 0) && !isProcessing;
+  // A shorter page on phones keeps the File it button above the keyboard.
+  const compact = typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches;
 
   return (
     <AnimatePresence>
@@ -262,7 +264,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-start sm:items-center justify-center p-2 pt-2 sm:p-4"
           onClick={onClose}
           onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
         >
@@ -287,7 +289,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                 stageFiles(files);
               }
             }}
-            className={`card-ink-static w-full max-w-2xl rounded-sm relative transition-all ${
+            className={`card-ink-static w-full max-w-2xl rounded-sm relative transition-all max-h-[94dvh] overflow-y-auto custom-scrollbar ${
               dragActive ? 'outline outline-2 outline-[var(--accent)] outline-offset-4' : ''
             }`}
           >
@@ -336,7 +338,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                   }
                 }}
                 placeholder="Write your thoughts, notes, or ideas..."
-                rows={6}
+                rows={compact ? 4 : 6}
                 className="bare-input font-display text-2xl leading-[32px] w-full bg-transparent text-ink placeholder:text-[var(--ink-faint)] outline-none resize-none caret-[var(--accent)]"
               />
             </div>
