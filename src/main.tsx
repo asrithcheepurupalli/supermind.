@@ -14,14 +14,20 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>
 );
 
-// Fade out the boot splash once React has painted its first frame.
+// Fade out the boot splash once React has painted, but never before the ink
+// rule has drawn itself once. On fast loads the app was mounting in under
+// 100ms and the splash vanished before it was ever seen.
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
     const boot = document.getElementById('boot');
-    if (boot) {
+    if (!boot) return;
+    const shownAt = (window as unknown as { __bootShownAt?: number }).__bootShownAt ?? performance.now();
+    const elapsed = performance.now() - shownAt;
+    const remaining = Math.max(0, 1150 - elapsed);
+    setTimeout(() => {
       boot.classList.add('boot-done');
-      setTimeout(() => boot.remove(), 400);
-    }
+      setTimeout(() => boot.remove(), 450);
+    }, remaining);
   });
 });
 

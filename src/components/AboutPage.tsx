@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, useScroll, useTransform, useInView, AnimatePresence, type MotionValue } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
 import MadeBadge from './MadeBadge';
+import { useLenis } from '../hooks/useLenis';
 
 interface AboutPageProps {
   onBack: () => void;
@@ -315,6 +316,7 @@ const SCRAPS: Array<[string, number, number, string]> = [
 ];
 
 export default function AboutPage({ onBack }: AboutPageProps) {
+  useLenis();
   const [step, setStep] = React.useState(0);
   const onActive = React.useCallback((i: number) => setStep(i), []);
   const fadeRef = React.useRef<HTMLDivElement>(null);

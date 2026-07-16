@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion';
 import MadeBadge from './MadeBadge';
+import { useLenis } from '../hooks/useLenis';
 import {
   ArrowRight,
   ArrowDown,
@@ -326,6 +327,7 @@ function Beliefs() {
 /* ---------- page ---------- */
 
 export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps) {
+  useLenis();
   const { scrollY, scrollYProgress } = useScroll();
   const collageY = useTransform(scrollY, [0, 700], [0, -60]);
 
@@ -488,7 +490,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
   ];
 
   return (
-    <div className="min-h-screen bg-paper text-ink relative overflow-x-hidden noise">
+    <div className="min-h-screen bg-paper text-ink relative overflow-x-clip noise">
       {/* Reading progress: an ink rule drawing itself across the top */}
       <motion.div
         aria-hidden
@@ -500,7 +502,7 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
       <motion.header
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-50 bg-paper/90 backdrop-blur-md border-b-[1.5px] border-ink"
+        className="sticky top-0 z-50 bg-paper border-b-[1.5px] border-ink"
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-baseline gap-1 group cursor-default">
