@@ -850,7 +850,10 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 
       <Toast />
-      <Analytics />
+      {/* Vercel Analytics ships only when explicitly enabled. The product
+          promises zero trackers; flipping VITE_ANALYTICS=1 in Vercel is a
+          deliberate choice to trade that promise for pageview counts. */}
+      {import.meta.env.VITE_ANALYTICS === '1' && <Analytics />}
     </div>
   );
 }
