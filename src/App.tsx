@@ -24,6 +24,7 @@ import Legend from './components/Legend';
 import ThemeToggle from './components/ThemeToggle';
 import MadeBadge from './components/MadeBadge';
 import SharedNote from './components/SharedNote';
+import Dot from './components/Dot';
 import { parseSharedNote, type SharedNote as SharedNotePayload } from './utils/shareNote';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -846,6 +847,7 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
 
       <CommandPalette />
       <Legend />
+      <Dot />
 
       {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 

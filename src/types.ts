@@ -84,6 +84,7 @@ export interface AppSettings {
     showPreviews: boolean;
     animationsEnabled: boolean;
     startPage?: 'home' | 'timeline';
+    companion?: boolean;
   };
   security: {
     encryptionEnabled: boolean;

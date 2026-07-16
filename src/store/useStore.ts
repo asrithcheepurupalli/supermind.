@@ -38,6 +38,7 @@ const defaultSettings: AppSettings = {
     showPreviews: true,
     animationsEnabled: true,
     startPage: 'home',
+    companion: true,
   },
   security: {
     encryptionEnabled: false,

@@ -419,6 +419,13 @@ export default function SettingsModal() {
         </Row>
       ))}
 
+      <Row title="Dot, the librarian" detail="A small companion who suggests the next move. Blinks. Means well.">
+        <InkCheck
+          value={settings.display.companion !== false}
+          onChange={() => updateSettings({ display: { ...settings.display, companion: settings.display.companion === false } })}
+        />
+      </Row>
+
       <Row title="Open the notebook to" detail="The page you land on when supermind starts.">
         <div className="flex flex-shrink-0">
           {([['home', "today's page"], ['timeline', 'the book']] as const).map(([key, label]) => (
