@@ -12,7 +12,8 @@ import {
 import { SavedContent, FilterState } from '../types';
 import { useSearch } from '../hooks/useSearch';
 import { useStore } from '../store/useStore';
-import { hapticTap } from '../utils/haptics';
+import { hapticTap, hapticSuccess } from '../utils/haptics';
+import { buildShareUrl, renderNoteImage } from '../utils/shareNote';
 
 interface TimelineProps {
   content: SavedContent[];
@@ -144,6 +145,38 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
   const openLink = (item: SavedContent) => {
     const url = item.contentType === 'link' ? item.contentText : item.fileUrl;
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const shareLink = async (item: SavedContent) => {
+    hapticTap();
+    try {
+      await navigator.clipboard.writeText(buildShareUrl(item));
+      toast.success('Link copied. The note travels inside it; no server involved.');
+    } catch {
+      toast.error('Could not reach the clipboard');
+    }
+  };
+
+  const shareCard = async (item: SavedContent) => {
+    hapticTap();
+    const blob = await renderNoteImage(item);
+    if (!blob) {
+      toast.error('Could not draw the card');
+      return;
+    }
+    const file = new File([blob], 'supermind-note.png', { type: 'image/png' });
+    if (navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'A note' }).catch(() => {});
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'supermind-note.png';
+    a.click();
+    URL.revokeObjectURL(url);
+    hapticSuccess();
+    toast.success('Note card downloaded');
   };
 
   return (
@@ -378,6 +411,26 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                             >
                               copy
                             </button>
+                            {(item.contentType === 'text' || item.contentType === 'link') && (
+                              <>
+                                <span className="text-ink-faint mx-2">·</span>
+                                <button
+                                  onClick={() => shareLink(item)}
+                                  title="Copy a link that carries this note inside it"
+                                  className="hover:text-accent transition-colors"
+                                >
+                                  pass it on
+                                </button>
+                                <span className="text-ink-faint mx-2">·</span>
+                                <button
+                                  onClick={() => shareCard(item)}
+                                  title="Download this note as an image card"
+                                  className="hover:text-accent transition-colors"
+                                >
+                                  card
+                                </button>
+                              </>
+                            )}
                             <span className="text-ink-faint mx-2">·</span>
                             <button onClick={() => startEdit(item)} className="hover:text-accent transition-colors">
                               edit

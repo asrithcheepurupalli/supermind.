@@ -23,6 +23,8 @@ import CommandPalette from './components/CommandPalette';
 import Legend from './components/Legend';
 import ThemeToggle from './components/ThemeToggle';
 import MadeBadge from './components/MadeBadge';
+import SharedNote from './components/SharedNote';
+import { parseSharedNote, type SharedNote as SharedNotePayload } from './utils/shareNote';
 import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
@@ -78,6 +80,9 @@ function App() {
   } = useStore();
 
   const [showLanding, setShowLanding] = React.useState(!isAuthenticated);
+  const [sharedNote, setSharedNote] = React.useState<SharedNotePayload | null>(
+    () => parseSharedNote(window.location.hash)
+  );
   const [showAbout, setShowAbout] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
   const [searchFocused, setSearchFocused] = React.useState(false);
@@ -284,6 +289,42 @@ function App() {
   };
 
   const needsEncryptionUnlock = isAuthenticated && user?.encryptionEnabled && !isEncryptionSetup;
+
+  // A passed note: the link carries the note in its fragment. Show it
+  // read-only, ahead of everything else, even for visitors with no notebook.
+  const closeSharedNote = () => {
+    window.history.replaceState({}, '', window.location.pathname);
+    setSharedNote(null);
+  };
+  const handleSaveSharedNote = async () => {
+    if (!sharedNote) return;
+    if (isAuthenticated) {
+      await addContent({
+        ...makeCapture(sharedNote.t),
+        tags: sharedNote.g ?? [],
+        sourceApp: 'Passed note',
+      });
+      toast.success('Saved to your book');
+      closeSharedNote();
+    } else {
+      try { localStorage.setItem('supermind_first_thought', sharedNote.t); } catch { /* private mode */ }
+      closeSharedNote();
+      setShowLanding(false);
+    }
+  };
+  if (sharedNote) {
+    return (
+      <>
+        <SharedNote
+          note={sharedNote}
+          isAuthenticated={isAuthenticated}
+          onSave={handleSaveSharedNote}
+          onOpenApp={() => { closeSharedNote(); setShowLanding(!isAuthenticated); }}
+        />
+        <Toast />
+      </>
+    );
+  }
 
   if (showAbout) {
     return <AboutPage onBack={handleBackFromAbout} />;
