@@ -65,11 +65,25 @@ export default function SettingsModal() {
     isEncryptionSetup,
     setEncryptionModalOpen,
     lock,
+    logout,
   } = useStore();
 
   const [activeSection, setActiveSection] = React.useState('profile');
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const securityScore = getSecurityScore();
+
+  // How full the notebook is. localStorage allows ~5MB.
+  const storage = React.useMemo(() => {
+    try {
+      const raw = window.localStorage.getItem('supermind-storage') ?? '';
+      const usedKB = Math.round((raw.length * 2) / 1024);
+      const capKB = 5 * 1024;
+      return { usedKB, capKB, pct: Math.min(100, Math.round((usedKB / capKB) * 100)) };
+    } catch {
+      return null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.length, isSettingsModalOpen]);
 
   // Open on the section requested by the caller (e.g. Profile → Privacy & Security).
   React.useEffect(() => {
@@ -112,6 +126,13 @@ export default function SettingsModal() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleEraseNotebook = () => {
+    if (!window.confirm('Erase this notebook? Your profile, settings, and all ' + content.length + ' entries will be gone from this device. Export a backup first if anything matters.')) {
+      return;
+    }
+    logout();
   };
 
   const handleDeleteAll = () => {
@@ -344,6 +365,23 @@ export default function SettingsModal() {
 
   const renderData = () => (
     <div>
+      {storage && (
+        <div className="mb-6">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <p className="font-label text-[9px] text-ink-soft">notebook weight</p>
+            <p className="font-label text-[9px] text-ink-faint tabular-nums">
+              {storage.usedKB < 1024 ? `${storage.usedKB} KB` : `${(storage.usedKB / 1024).toFixed(1)} MB`} of ~5 MB
+            </p>
+          </div>
+          <div className="h-[5px] border border-ink rounded-full overflow-hidden bg-paper-raised">
+            <div className="h-full bg-accent transition-all" style={{ width: `${Math.max(1, storage.pct)}%` }} />
+          </div>
+          <p className="font-label text-[8px] text-ink-faint mt-1.5">
+            everything lives in this browser's storage. export regularly.
+          </p>
+        </div>
+      )}
+
       <Row title="Export everything" detail={`Download all ${content.length} items as a JSON backup.`}>
         <button
           onClick={() => { exportContent(); toast.success('Backup downloaded'); }}
@@ -373,15 +411,26 @@ export default function SettingsModal() {
         <span className="stamp !border-red-600 !text-red-600 absolute -top-3 left-4 bg-[var(--paper-raised)]">
           Danger
         </span>
-        <div className="flex items-center justify-between gap-6 pt-1">
+        <div className="flex items-center justify-between gap-6 pt-1 pb-4 border-b border-dotted border-[var(--ink-line)]">
           <p className="text-ink-faint text-xs leading-relaxed">
-            Permanently delete all your saved content. There is no undo.
+            Delete every entry, but keep your profile and settings.
           </p>
           <button
             onClick={handleDeleteAll}
             className="haptic px-4 py-1.5 rounded-sm text-xs font-semibold border-[1.5px] border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 active:translate-y-[1px]"
           >
-            <Trash2 size={12} /> Delete all
+            <Trash2 size={12} /> Delete entries
+          </button>
+        </div>
+        <div className="flex items-center justify-between gap-6 pt-4">
+          <p className="text-ink-faint text-xs leading-relaxed">
+            Erase the whole notebook: profile, settings, and every entry. Back to the blank first page.
+          </p>
+          <button
+            onClick={handleEraseNotebook}
+            className="haptic px-4 py-1.5 rounded-sm text-xs font-semibold border-[1.5px] border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1.5 flex-shrink-0 active:translate-y-[1px]"
+          >
+            <Trash2 size={12} /> Erase notebook
           </button>
         </div>
       </div>

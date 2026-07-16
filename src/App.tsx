@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, BarChart3, Menu, X, Search, Command, Bell, Settings, Zap,
-  Shield, Grid, Clock, Smartphone,
+  Shield, Grid, BookOpen, Smartphone,
   Network, Download, ChevronRight, CalendarClock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -318,12 +318,6 @@ function App() {
       }
     : { initial: false as const, animate: { opacity: 1 }, exit: { opacity: 0 } };
 
-  const viewSwitcher = [
-    { id: 'timeline' as const, icon: Clock, label: 'Timeline' },
-    { id: 'graph' as const, icon: Network, label: 'Graph' },
-    { id: 'almanac' as const, icon: BarChart3, label: 'Almanac' },
-  ];
-
   return (
     <div className="flex h-screen overflow-hidden bg-paper text-ink noise">
 
@@ -426,25 +420,6 @@ function App() {
                 </motion.div>
               </div>
 
-              {/* View Switcher */}
-              <div className="hidden sm:flex items-stretch border-[1.5px] border-ink rounded-sm overflow-hidden divide-x-[1.5px] divide-[var(--ink)]">
-                {viewSwitcher.map((view) => {
-                  const IconComponent = view.icon;
-                  const active = activeView === view.id;
-                  return (
-                    <button
-                      key={view.id}
-                      onClick={() => { hapticTap(); setActiveView(view.id); }}
-                      className={`haptic px-4 py-2 flex items-center gap-2 font-label text-[10px] transition-colors ${
-                        active ? 'bg-ink text-paper' : 'bg-paper-raised text-ink-soft hover:text-ink hover:bg-[var(--accent-soft)]'
-                      }`}
-                    >
-                      <IconComponent size={13} />
-                      <span className="hidden lg:block">{view.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -729,71 +704,67 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
         </div>
       </div>
 
-      {/* Floating Add Button (desktop) */}
-      {activeView !== 'home' && (
-        <motion.div
-          className="hidden sm:block print:!hidden fixed bottom-6 right-6 lg:bottom-8 lg:right-8 z-40"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <motion.button
-            onClick={() => { hapticTap(); setUploadModalOpen(true); }}
-            className="btn-ink haptic relative w-14 h-14 rounded-sm flex items-center justify-center"
-          >
-            <Plus size={24} />
-          </motion.button>
-        </motion.div>
-      )}
-
-      {/* Mobile Navigation */}
-      <div className="sm:hidden print:!hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 z-30 safe-area-bottom">
-        <div className="card-ink-static flex items-center justify-center gap-4 py-2.5 px-6 rounded-sm">
+      {/* The Dock: one bar, every page, all screen sizes. */}
+      <nav className="print:!hidden fixed bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 z-40 safe-area-bottom">
+        <div className="card-ink-static flex items-end justify-center gap-1 sm:gap-2 py-2 px-3 sm:px-4 rounded-sm">
           {([
-            { id: 'home', icon: Grid, label: 'Home' },
-            { id: 'timeline', icon: Clock, label: 'Timeline' },
-          ] as const).map((nav) => (
-            <motion.button
-              key={nav.id}
-              whileHover={{ scale: 1.1, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setActiveView(nav.id)}
-              className={`haptic flex flex-col items-center gap-1 p-2 transition-colors ${
-                activeView === nav.id ? 'text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <nav.icon size={20} strokeWidth={activeView === nav.id ? 2.5 : 2} />
-              <span className="font-label text-[9px]">{nav.label}</span>
-            </motion.button>
-          ))}
+            { id: 'home', icon: Grid, label: 'today' },
+            { id: 'timeline', icon: BookOpen, label: 'book' },
+          ] as const).map((nav) => {
+            const active = activeView === nav.id;
+            return (
+              <motion.button
+                key={nav.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => { hapticTap(); setActiveView(nav.id); }}
+                aria-label={nav.label === 'book' ? 'Book' : 'Today'}
+                className={`haptic relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-sm transition-colors ${
+                  active ? 'text-accent' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                <nav.icon size={19} strokeWidth={active ? 2.4 : 1.9} />
+                <span className="font-label text-[8px]">{nav.label}</span>
+                {active && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />}
+              </motion.button>
+            );
+          })}
 
           <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ y: -3 }}
+            whileTap={{ scale: 0.92 }}
             onClick={() => { hapticTap(); setUploadModalOpen(true); }}
-            className="btn-ink haptic w-12 h-12 rounded-sm flex items-center justify-center"
+            aria-label="New entry"
+            title="A fresh page (⌘N)"
+            className="btn-ink haptic w-12 h-12 mx-1 rounded-sm flex items-center justify-center -translate-y-1"
           >
             <Plus size={24} strokeWidth={2.5} />
           </motion.button>
 
           {([
-            { id: 'graph', icon: Network, label: 'Graph' },
-            { id: 'almanac', icon: BarChart3, label: 'Almanac' },
-          ] as const).map((nav) => (
-            <motion.button
-              key={nav.id}
-              whileHover={{ scale: 1.1, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setActiveView(nav.id)}
-              className={`haptic flex flex-col items-center gap-1 p-2 transition-colors ${
-                activeView === nav.id ? 'text-accent' : 'text-ink-soft'
-              }`}
-            >
-              <nav.icon size={20} strokeWidth={activeView === nav.id ? 2.5 : 2} />
-              <span className="font-label text-[9px]">{nav.label}</span>
-            </motion.button>
-          ))}
+            { id: 'graph', icon: Network, label: 'graph' },
+            { id: 'almanac', icon: BarChart3, label: 'almanac' },
+          ] as const).map((nav) => {
+            const active = activeView === nav.id;
+            return (
+              <motion.button
+                key={nav.id}
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => { hapticTap(); setActiveView(nav.id); }}
+                aria-label={nav.label === 'graph' ? 'Graph' : 'Almanac'}
+                className={`haptic relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-sm transition-colors ${
+                  active ? 'text-accent' : 'text-ink-soft hover:text-ink'
+                }`}
+              >
+                <nav.icon size={19} strokeWidth={active ? 2.4 : 1.9} />
+                <span className="font-label text-[8px]">{nav.label}</span>
+                {active && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />}
+              </motion.button>
+            );
+          })}
         </div>
-      </div>
+      </nav>
 
       {/* Modals */}
       <UploadModal

@@ -17,7 +17,8 @@ import {
   Settings,
   Star,
   X,
-  LogOut,
+  ChevronRight,
+  Lock,
   type LucideIcon,
 } from 'lucide-react';
 import { Category, FilterState } from '../types';
@@ -57,7 +58,7 @@ export default function Sidebar({
   onClose,
   isMobile = false,
 }: SidebarProps) {
-  const { user, content, setSettingsModalOpen, settings, getSecurityScore, logout } = useStore();
+  const { user, content, setSettingsModalOpen, settings, getSecurityScore, setActiveView, lock, isEncryptionSetup } = useStore();
   const securityScore = getSecurityScore();
 
   const topTags = React.useMemo(() => {
@@ -72,14 +73,6 @@ export default function Sidebar({
       .slice(0, 8)
       .map(([tag]) => tag);
   }, [content]);
-
-  const handleLogout = () => {
-    if (!window.confirm('Sign out? This clears your profile and all locally stored data on this device. Export a backup first if you want to keep your content.')) {
-      return;
-    }
-    logout();
-    if (isMobile) onClose?.();
-  };
 
   return (
     <motion.div
@@ -276,25 +269,32 @@ export default function Sidebar({
           </button>
         )}
 
-        <div className="flex items-center gap-3 mb-3">
+        <button
+          onClick={() => { setActiveView('profile'); onClose?.(); }}
+          className="haptic w-full flex items-center gap-3 group text-left rounded-sm -mx-1 px-1 py-1 hover:bg-[var(--accent-soft)]/40 transition-colors"
+          title="Open your page"
+        >
           <div className="w-9 h-9 rounded-full bg-ink text-paper flex items-center justify-center font-display text-lg flex-shrink-0">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="font-display text-lg leading-tight text-ink truncate">{user?.name || 'User'}</div>
             <div className="font-label text-[8px] text-ink-faint truncate">
               {user?.email || 'local profile'}
             </div>
           </div>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="btn-paper haptic w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-label text-[10px]"
-        >
-          <LogOut size={12} />
-          sign out & clear data
+          <ChevronRight size={14} className="text-ink-faint group-hover:text-accent group-hover:translate-x-0.5 transition-all flex-shrink-0" />
         </button>
+
+        {settings.security.encryptionEnabled && isEncryptionSetup && (
+          <button
+            onClick={() => lock()}
+            className="btn-paper haptic w-full flex items-center justify-center gap-2 py-2.5 rounded-sm font-label text-[10px] mt-3"
+          >
+            <Lock size={12} />
+            lock the notebook
+          </button>
+        )}
       </div>
     </motion.div>
   );

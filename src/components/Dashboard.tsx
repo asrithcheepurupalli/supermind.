@@ -108,7 +108,11 @@ function TallyMarks({ count }: { count: number }) {
 }
 
 export default function Dashboard() {
-  const { user, content, addContent, setUploadModalOpen, setActiveView, setFilter } = useStore();
+  const {
+    user, content, addContent, setUploadModalOpen, setActiveView, setFilter,
+    firstRun, markFirstRun, setCommandPaletteOpen, setSettingsModalOpen,
+  } = useStore();
+  const captureRef = React.useRef<HTMLTextAreaElement>(null);
   const [quickNote, setQuickNote] = React.useState('');
   const [isCapturing, setIsCapturing] = React.useState(false);
 
@@ -192,6 +196,89 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      {/* First run: three moves, each one a live button, each one
+          checking itself off as it actually happens. */}
+      {!firstRun.dismissed && !(items.length > 0 && firstRun.palette && firstRun.theme) && (
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="card-ink-static rounded-sm p-6 mb-10 relative -rotate-[0.3deg]"
+        >
+          <span
+            aria-hidden
+            className="absolute -top-2.5 left-8 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] rotate-[-3deg]"
+            style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+          />
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="font-label text-[9px] text-accent mb-1">start here</p>
+              <h2 className="font-display text-2xl text-ink">
+                Three moves and you have the hang of it.
+              </h2>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <span className="font-label text-[9px] text-ink-faint tabular-nums">
+                {[items.length > 0, firstRun.palette, firstRun.theme].filter(Boolean).length}/3
+              </span>
+              <button
+                onClick={() => markFirstRun('dismissed')}
+                className="font-label text-[9px] text-ink-faint hover:text-accent transition-colors"
+              >
+                skip
+              </button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            {[
+              {
+                done: items.length > 0,
+                title: 'Write a thought',
+                detail: 'anything at all, on the line below',
+                act: () => captureRef.current?.focus(),
+              },
+              {
+                done: firstRun.palette,
+                title: 'Find anything with ⌘K',
+                detail: 'the palette searches everything you write',
+                act: () => setCommandPaletteOpen(true),
+              },
+              {
+                done: firstRun.theme,
+                title: 'Pick your paper',
+                detail: 'daylight or midnight, in settings',
+                act: () => setSettingsModalOpen(true, 'display'),
+              },
+            ].map((move, i) => (
+              <button
+                key={move.title}
+                onClick={() => { hapticTap(); move.act(); }}
+                disabled={move.done}
+                className="haptic w-full flex items-center gap-3 py-2.5 border-b border-dotted border-[var(--ink-line)] last:border-0 text-left group disabled:pointer-events-none"
+              >
+                <span
+                  className={`w-4.5 h-4.5 w-[18px] h-[18px] border-[1.5px] rounded-sm flex items-center justify-center flex-shrink-0 transition-colors ${
+                    move.done ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--ink)]'
+                  }`}
+                >
+                  {move.done && (
+                    <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none">
+                      <path d="M2 6.5L4.8 9L10 3" stroke="#fffdf7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span className={`font-display text-lg ${move.done ? 'text-ink-faint line-through decoration-[var(--ink-line)]' : 'text-ink'}`}>
+                  {i + 1}. {move.title}
+                </span>
+                <span className="font-label text-[9px] text-ink-faint ml-auto hidden sm:block group-hover:text-accent transition-colors">
+                  {move.done ? 'done' : move.detail + ' →'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Quick capture: a ruled writing line */}
       <motion.div
         initial={{ opacity: 0, y: 14 }}
@@ -202,6 +289,7 @@ export default function Dashboard() {
         <div className="flex items-end gap-3">
           <div className="flex-1 relative">
             <textarea
+              ref={captureRef}
               value={quickNote}
               onChange={(e) => setQuickNote(e.target.value)}
               onKeyDown={(e) => {

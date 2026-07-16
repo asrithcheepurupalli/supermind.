@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { SavedContent, User, Category, FilterState, AppSettings, EncryptedContent } from '../types';
-import { baseCategories, createOnboardingContent } from '../utils/onboarding';
+import { baseCategories } from '../utils/onboarding';
 import { encryptionManager } from '../utils/encryption';
 import { clientSideAI } from '../utils/clientSideAI';
 import toast from 'react-hot-toast';
@@ -71,6 +71,9 @@ interface AppState {
   // App Settings
   settings: AppSettings;
 
+  // First-run progress: which of the three starter moves are done.
+  firstRun: { palette: boolean; theme: boolean; dismissed: boolean };
+
   // Loading States
   isLoading: boolean;
   isProcessing: boolean;
@@ -101,6 +104,7 @@ interface AppState {
   importContent: (content: unknown) => number;
   deleteAllContent: () => void;
   getSecurityScore: () => number;
+  markFirstRun: (key: 'palette' | 'theme' | 'dismissed') => void;
   logout: () => void;
 }
 
@@ -187,19 +191,13 @@ export const useStore = create<AppState>()(
       isLegendOpen: false,
       selectedContent: null,
       settings: defaultSettings,
+      firstRun: { palette: false, theme: false, dismissed: false },
       isLoading: false,
       isProcessing: false,
 
       // Actions
       setUser: (user) =>
-        set((state) => ({
-          user,
-          isAuthenticated: !!user,
-          // Seed the interactive onboarding guides for a brand-new profile.
-          content: user && state.content.length === 0 && state.encryptedContent.length === 0
-            ? createOnboardingContent(user.id)
-            : state.content,
-        })),
+        set({ user, isAuthenticated: !!user }),
 
       setupEncryption: async (password) => {
         try {
@@ -326,8 +324,14 @@ export const useStore = create<AppState>()(
 
       setFilter: (filter) => set({ filter }),
       setActiveView: (view) => set({ activeView: view }),
-      setCommandPaletteOpen: (open) => set({ isCommandPaletteOpen: open }),
+      setCommandPaletteOpen: (open) =>
+        set((state) => ({
+          isCommandPaletteOpen: open,
+          firstRun: open ? { ...state.firstRun, palette: true } : state.firstRun,
+        })),
       setLegendOpen: (open) => set({ isLegendOpen: open }),
+      markFirstRun: (key) =>
+        set((state) => ({ firstRun: { ...state.firstRun, [key]: true } })),
       setUploadModalOpen: (open) => set({ isUploadModalOpen: open }),
       setSettingsModalOpen: (open, section) =>
         set((state) => ({
@@ -338,6 +342,9 @@ export const useStore = create<AppState>()(
       setSelectedContent: (content) => set({ selectedContent: content }),
       updateSettings: (newSettings) => set((state) => ({
         settings: { ...state.settings, ...newSettings },
+        firstRun: newSettings.theme && newSettings.theme !== state.settings.theme
+          ? { ...state.firstRun, theme: true }
+          : state.firstRun,
       })),
       setLoading: (loading) => set({ isLoading: loading }),
       setProcessing: (processing) => set({ isProcessing: processing }),
@@ -468,6 +475,7 @@ export const useStore = create<AppState>()(
         // only in memory and is restored by unlocking.
         content: state.user?.encryptionEnabled ? [] : state.content,
         settings: state.settings,
+        firstRun: state.firstRun,
       }),
       migrate: (persistedState: unknown, version: number) => {
         const state = (persistedState ?? {}) as Partial<AppState> & { settings?: AppSettings };
@@ -492,6 +500,8 @@ export const useStore = create<AppState>()(
         return {
           ...current,
           ...state,
+          // The old guide system is gone; drop any seeded guide entries.
+          content: (state.content ?? []).filter(c => !c?.metadata?.isGuide),
           settings: {
             ...defaultSettings,
             ...s,

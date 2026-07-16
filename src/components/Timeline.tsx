@@ -6,7 +6,6 @@ import {
   ArrowUpDown,
   Printer,
   ExternalLink,
-  Lightbulb,
   Search,
   Plus,
 } from 'lucide-react';
@@ -59,7 +58,7 @@ const dayHeading = (d: Date) => {
 // The Book: a continuous journal, not a card grid. Entries live on ruled
 // lines with a margin column; clicking an entry unfolds it in place.
 export default function Timeline({ content, filter, onToggleFavorite, onFilterChange }: TimelineProps) {
-  const { deleteContent, updateContent, setFilter, setUploadModalOpen, bulkDeleteContent, settings } = useStore();
+  const { deleteContent, updateContent, setFilter, setUploadModalOpen, settings } = useStore();
   const showPreviews = settings.display.showPreviews;
   const [sortAsc, setSortAsc] = React.useState(false);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
@@ -68,11 +67,6 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
   const [confirmingDelete, setConfirmingDelete] = React.useState<string | null>(null);
 
   const searchResults = useSearch(content, filter.searchQuery);
-
-  const guides = React.useMemo(
-    () => content.filter(c => c.metadata?.isGuide).sort((a, b) => (a.metadata?.guideStep ?? 0) - (b.metadata?.guideStep ?? 0)),
-    [content]
-  );
 
   const entries = React.useMemo(() => {
     let filtered = (filter.searchQuery ? searchResults.map(r => r.content) : content)
@@ -147,12 +141,6 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
     toast.success('Entry removed');
   };
 
-  const handleDismissAllGuides = () => {
-    const guideIds = guides.filter(c => c.metadata?.canDismiss).map(c => c.id);
-    bulkDeleteContent(guideIds);
-    toast.success(`Dismissed ${guideIds.length} guide${guideIds.length !== 1 ? 's' : ''}`);
-  };
-
   const openLink = (item: SavedContent) => {
     const url = item.contentType === 'link' ? item.contentText : item.fileUrl;
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
@@ -170,14 +158,6 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
           <span className="font-label text-[9px] text-ink-faint tabular-nums">
             {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}
           </span>
-          {guides.length > 0 && (
-            <button
-              onClick={handleDismissAllGuides}
-              className="font-label text-[9px] text-ink-faint hover:text-accent transition-colors flex items-center gap-1"
-            >
-              <Lightbulb size={10} /> Dismiss all guides ({guides.length})
-            </button>
-          )}
           <button
             onClick={() => { hapticTap(); setSortAsc(v => !v); }}
             className="font-label text-[9px] text-ink-soft hover:text-ink transition-colors flex items-center gap-1"
@@ -195,51 +175,8 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
         </div>
       </div>
 
-      {/* Guides: quiet paper margin-notes, one at a time */}
-      {guides.length > 0 && (
-        <div className="my-6">
-          {guides.slice(0, 1).map(guide => (
-            <motion.div
-              key={guide.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="card-ink-static rounded-sm p-5 relative -rotate-[0.4deg]"
-            >
-              <div
-                aria-hidden
-                className="absolute -top-2.5 left-10 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)]"
-                style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
-              />
-              <div className="flex items-center justify-between mb-3">
-                <span className="font-label text-[9px] text-accent">
-                  Step {guide.metadata?.guideStep ?? 1}/{6} · getting started
-                </span>
-                <span className="stamp !py-0.5 !px-1.5 text-[8px] text-ink-faint">guide</span>
-              </div>
-              <p className="font-display text-lg leading-relaxed text-ink mb-4">
-                {guide.contentText}
-              </p>
-              <div className="flex items-center gap-4 font-label text-[9px]">
-                <button
-                  onClick={() => { hapticTap(); deleteContent(guide.id); }}
-                  className="btn-ink haptic px-4 py-1.5 rounded-sm"
-                >
-                  got it →
-                </button>
-                <button
-                  onClick={handleDismissAllGuides}
-                  className="text-ink-faint hover:text-accent transition-colors"
-                >
-                  dismiss all
-                </button>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
       {/* Empty state */}
-      {entries.length === 0 && guides.length === 0 && (
+      {entries.length === 0 && (
         <div className="border-[1.5px] border-dashed border-[var(--ink-line)] rounded-sm py-20 text-center mt-8">
           {filter.searchQuery || filter.tags.length > 0 || filter.contentType || filter.favoritesOnly || filter.category !== 'all' ? (
             <>
