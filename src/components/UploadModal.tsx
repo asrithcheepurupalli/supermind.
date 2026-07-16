@@ -61,6 +61,23 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
   const processFiles = async (files: File[]) => {
     setIsProcessing(true);
     try {
+      // A thought written before attaching must survive the attachment.
+      const pendingText = textInput.trim();
+      if (pendingText) {
+        await onAddContent({
+          id: newId(),
+          contentText: pendingText,
+          contentType: 'text',
+          sourceApp: 'Note',
+          timestamp: new Date(),
+          tags: [],
+          summary: '',
+          userId: 'local',
+          category: 'personal',
+          isFavorite: false,
+        });
+        setTextInput('');
+      }
       for (const file of files) {
         const contentType = getContentType(file.type);
         let fileUrl: string | undefined;
@@ -103,56 +120,76 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
     }
   };
 
-  const handleTextSubmit = async () => {
-    if (!textInput.trim() || isProcessing) return;
+  // One submission, everything on the page gets filed. Text and a link
+  // together become one note carrying the link; nothing typed is ever
+  // silently discarded.
+  const handleSubmit = async () => {
+    const text = textInput.trim();
+    const raw = linkInput.trim();
+    if ((!text && !raw) || isProcessing) return;
+
+    let url: string | null = null;
+    let hostname = '';
+    if (raw) {
+      // Browsers quietly percent-encode spaces instead of rejecting them, so
+      // new URL() alone is not enough: no whitespace, and the host needs a dot.
+      const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+      try {
+        if (/\s/.test(raw)) throw new Error('whitespace');
+        const parsed = new URL(withProtocol);
+        if (!parsed.hostname.includes('.') && parsed.hostname !== 'localhost') throw new Error('no dot');
+        hostname = parsed.hostname;
+        url = withProtocol;
+      } catch {
+        toast.error("That doesn't look like a URL. Fix it or clear the link field.");
+        return;
+      }
+    }
+
     setIsProcessing(true);
     try {
-      await onAddContent({
-        id: newId(),
-        contentText: textInput.trim(),
-        contentType: 'text',
-        sourceApp: 'Note',
-        timestamp: new Date(),
-        tags: [],
-        summary: '',
-        userId: 'local',
-        category: 'personal',
-        isFavorite: false,
-      });
+      if (text && url) {
+        await onAddContent({
+          id: newId(),
+          contentText: `${text}\n\n${url}`,
+          contentType: 'text',
+          sourceApp: hostname,
+          timestamp: new Date(),
+          tags: [],
+          summary: '',
+          userId: 'local',
+          category: 'personal',
+          isFavorite: false,
+        });
+      } else if (url) {
+        await onAddContent({
+          id: newId(),
+          contentText: url,
+          contentType: 'link',
+          sourceApp: hostname,
+          timestamp: new Date(),
+          tags: [],
+          summary: '',
+          userId: 'local',
+          category: 'articles',
+          isFavorite: false,
+        });
+      } else {
+        await onAddContent({
+          id: newId(),
+          contentText: text,
+          contentType: 'text',
+          sourceApp: 'Note',
+          timestamp: new Date(),
+          tags: [],
+          summary: '',
+          userId: 'local',
+          category: 'personal',
+          isFavorite: false,
+        });
+      }
       hapticSuccess();
       setTextInput('');
-      onClose();
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleLinkSubmit = async () => {
-    const raw = linkInput.trim();
-    if (!raw || isProcessing) return;
-    const withProtocol = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    let hostname: string;
-    try {
-      hostname = new URL(withProtocol).hostname;
-    } catch {
-      toast.error("That doesn't look like a URL");
-      return;
-    }
-    setIsProcessing(true);
-    try {
-      await onAddContent({
-        id: newId(),
-        contentText: withProtocol,
-        contentType: 'link',
-        sourceApp: hostname,
-        timestamp: new Date(),
-        tags: [],
-        summary: '',
-        userId: 'local',
-        category: 'articles',
-        isFavorite: false,
-      });
-      hapticSuccess();
       setLinkInput('');
       onClose();
     } finally {
@@ -202,7 +239,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
-                handleTextSubmit();
+                handleSubmit();
               }
             }}
             placeholder="Write your thoughts, notes, or ideas..."
@@ -218,15 +255,11 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
             type="url"
             value={linkInput}
             onChange={(e) => setLinkInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleLinkSubmit()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder="https://example.com"
             className="bare-input flex-1 bg-transparent text-ink text-sm placeholder:text-[var(--ink-faint)] outline-none border-b border-[var(--ink-line)] focus:border-[var(--accent)] transition-colors pb-1"
           />
-          {linkInput.trim() && (
-            <button onClick={handleLinkSubmit} className="btn-paper haptic px-3 py-1 rounded-sm font-label text-[9px]">
-              Add Link
-            </button>
-          )}
+
         </div>
 
         {/* Footer: attach + file it */}
@@ -256,12 +289,12 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
           <div className="flex items-center gap-3">
             <kbd className="keycap hidden sm:inline-flex text-[9px] !py-0.5 !px-1.5">⌘↵</kbd>
             <button
-              onClick={handleTextSubmit}
-              disabled={!textInput.trim() || isProcessing}
+              onClick={handleSubmit}
+              disabled={(!textInput.trim() && !linkInput.trim()) || isProcessing}
               className="btn-ink haptic px-6 py-2.5 rounded-sm font-semibold text-sm disabled:opacity-30 disabled:pointer-events-none inline-flex items-center gap-2"
             >
               {isProcessing ? <Loader2 size={14} className="animate-spin" /> : null}
-              Add Note
+              File it
             </button>
           </div>
         </div>

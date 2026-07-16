@@ -142,8 +142,12 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
     toast.success('Entry removed');
   };
 
+  const urlInText = (t: string) => t.match(/https?:\/\/\S+/)?.[0];
+
   const openLink = (item: SavedContent) => {
-    const url = item.contentType === 'link' ? item.contentText : item.fileUrl;
+    const url = item.contentType === 'link'
+      ? item.contentText
+      : item.fileUrl ?? urlInText(item.contentText);
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -397,7 +401,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
                           {/* Marginalia actions */}
                           <div className="flex items-center gap-1 mt-5 mb-1 font-label text-[9px] text-ink-soft">
-                            {(item.contentType === 'link' || item.fileUrl) && (
+                            {(item.contentType === 'link' || item.fileUrl || urlInText(item.contentText)) && (
                               <>
                                 <button onClick={() => openLink(item)} className="hover:text-accent transition-colors flex items-center gap-1">
                                   open <ExternalLink size={9} />

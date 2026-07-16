@@ -182,6 +182,21 @@ export default function Dot() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeView, enabled, hidden]);
 
+  // If the spoken suggestion's condition disappears (the user wrote the
+  // thought Dot asked for, cleared the reminders, and so on), swap the
+  // bubble for a fresh line instead of leaving a stale one hanging.
+  React.useEffect(() => {
+    if (!bubbleOpen || !suggestion) return;
+    if (suggestions.some(s => s.id === suggestion.id)) return;
+    const next = suggestions[0];
+    if (next) {
+      lastIdRef.current = next.id;
+      setSuggestion(next);
+    } else {
+      setBubbleOpen(false);
+    }
+  }, [suggestions, bubbleOpen, suggestion]);
+
   if (!enabled || hidden) return null;
 
   const cycle = () => {
