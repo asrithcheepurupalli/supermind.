@@ -60,10 +60,6 @@
         background: #faf6ee;
         transition: opacity 0.35s ease;
       }
-      @media (prefers-color-scheme: dark) {
-        #boot { background: #141310; }
-        #boot .boot-word { color: #f2ecdd; }
-      }
       #boot.boot-done { opacity: 0; pointer-events: none; }
       #boot .boot-word {
         font-family: Georgia, 'Times New Roman', serif;
@@ -84,14 +80,31 @@
         70% { transform: scaleX(1); opacity: 1; }
         100% { transform: scaleX(1); opacity: 0; }
       }
+      /* Midnight splash, driven by the app's own saved theme (set by the
+         inline script below), so the splash always matches what loads next.
+         These come last so they win over the base rules above. */
+      html.boot-dark #boot { background: #141310; }
+      html.boot-dark #boot .boot-word { color: #f2ecdd; }
     </style>
   </head>
   <body>
+    <script>
+      // Match the splash to the app's saved theme before anything paints.
+      // New visitors get paper (the app defaults to light); returning users
+      // get whichever ink they chose.
+      try {
+        var s = JSON.parse(localStorage.getItem('supermind-storage'));
+        var t = s && s.state && s.state.settings && s.state.settings.theme;
+        if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('boot-dark');
+        }
+      } catch (e) { /* private mode */ }
+      window.__bootShownAt = performance.now();
+    </script>
     <div id="boot" aria-hidden="true">
       <span class="boot-word">supermind</span>
       <span class="boot-rule"></span>
     </div>
-    <script>window.__bootShownAt = performance.now();</script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
