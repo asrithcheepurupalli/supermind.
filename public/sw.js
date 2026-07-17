@@ -19,7 +19,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  if (request.method !== 'GET' || new URL(request.url).origin !== location.origin) return;
+  const url = new URL(request.url);
+  if (request.method !== 'GET' || url.origin !== location.origin) return;
+  // The unfurler is live data, not an asset; let the network answer every time.
+  if (url.pathname.startsWith('/api/')) return;
 
   if (request.mode === 'navigate') {
     // Network-first for the shell so deploys land immediately; cache fallback offline.

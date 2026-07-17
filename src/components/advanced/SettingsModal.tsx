@@ -15,6 +15,36 @@ const sections = [
   { id: 'data', label: 'Data & Storage' },
 ];
 
+const isTouch = typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches;
+
+// The bookmarklet: a bookmark that clips whatever page you are on into the
+// notebook. Its href is set through a ref because React refuses javascript:
+// URLs in JSX, which is the right instinct everywhere but here.
+function BookmarkletRow() {
+  const code =
+    `javascript:void(location.href=${JSON.stringify(`${window.location.origin}/?add=`)}` +
+    `+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title))`;
+  return (
+    <Row
+      title="Clip from any page"
+      detail="Drag this button to your bookmarks bar. One click on any page files it here, title and all."
+    >
+      <a
+        ref={(el) => el?.setAttribute('href', code)}
+        draggable
+        onClick={(e) => {
+          e.preventDefault();
+          navigator.clipboard?.writeText(code);
+          toast('Drag it to the bookmarks bar. The code is also on your clipboard for a new bookmark.');
+        }}
+        className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex-shrink-0 cursor-grab whitespace-nowrap"
+      >
+        save on supermind
+      </a>
+    </Row>
+  );
+}
+
 // A printed-form checkbox: ink square, fills vermilion when checked.
 function InkCheck({ value, onChange }: { value: boolean; onChange: () => void }) {
   return (
@@ -468,7 +498,7 @@ export default function SettingsModal() {
       </div>
 
       {([
-        { key: 'showPreviews' as const, label: 'Show previews', desc: 'Display image and media previews in the book.' },
+        { key: 'showPreviews' as const, label: 'Show previews', desc: 'Image and media previews, plus each saved link\'s own card. Fetching a card sends only that link to supermind.ink, never your notebook. Off means saves stay fully offline.' },
         { key: 'animationsEnabled' as const, label: 'Animations', desc: 'Enable smooth transitions and motion.' },
       ]).map(({ key, label, desc }) => (
         <Row key={key} title={label} detail={desc}>
@@ -546,6 +576,8 @@ export default function SettingsModal() {
           )}
         </div>
       )}
+
+      {!isTouch && <BookmarkletRow />}
 
       <Row title="Pass to another device" detail={`Hands the whole notebook to AirDrop or your share sheet. Open supermind on the other device and import it.${settings.security.encryptionEnabled ? ' The file itself is readable ink, not ciphertext; treat it like the open notebook.' : ''}`}>
         <button

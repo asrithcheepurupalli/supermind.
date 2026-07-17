@@ -122,6 +122,78 @@ function MovingPicture({ item }: { item: SavedContent }) {
   );
 }
 
+// A saved page's own card, tipped in like a newspaper clipping: its image,
+// title, and blurb. Playable links (YouTube, Vimeo) trade the clipping for
+// the player right there in the page.
+function LinkPlate({ item, onOpen }: { item: SavedContent; onOpen: () => void }) {
+  const [playing, setPlaying] = React.useState(false);
+  const p = item.preview;
+  if (!p || (!p.title && !p.image)) return null;
+
+  const sourceLine = [p.site, hostForUrl(item.contentText)]
+    .filter((v, i, a) => Boolean(v) && a.indexOf(v) === i)
+    .join(' · ');
+
+  if (playing && p.video) {
+    return (
+      <figure className="mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-2.5 max-w-xl rotate-[-0.2deg]">
+        <iframe
+          src={`${p.video}${p.video.includes('?') ? '&' : '?'}autoplay=1`}
+          title={p.title || 'player'}
+          allow="autoplay; encrypted-media; picture-in-picture"
+          allowFullScreen
+          className="w-full aspect-video border border-[var(--ink-line)] bg-ink"
+        />
+        <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase truncate">
+          {['Clipping', sourceLine].filter(Boolean).join(' · ')}
+        </figcaption>
+      </figure>
+    );
+  }
+
+  return (
+    <figure
+      onClick={(e) => {
+        e.stopPropagation();
+        hapticTap();
+        if (p.video) setPlaying(true);
+        else onOpen();
+      }}
+      className="mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] max-w-xl rotate-[-0.2deg] cursor-pointer overflow-hidden group/card"
+    >
+      {p.image && (
+        <div className="relative border-b border-[var(--ink-line)]">
+          <img
+            src={p.image}
+            alt=""
+            loading="lazy"
+            onError={(e) => { e.currentTarget.parentElement!.style.display = 'none'; }}
+            className="w-full max-h-56 object-cover"
+          />
+          {p.video && (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="w-12 h-12 rounded-full bg-paper border-[1.5px] border-ink shadow-[2px_2px_0_var(--ink)] flex items-center justify-center text-ink text-base pl-0.5 group-hover/card:scale-105 transition-transform">
+                ▶
+              </span>
+            </span>
+          )}
+        </div>
+      )}
+      <div className="p-3.5">
+        {p.title && (
+          <p className="font-display text-lg text-ink leading-snug line-clamp-2">{p.title}</p>
+        )}
+        {p.description && (
+          <p className="text-ink-soft text-sm leading-relaxed line-clamp-2 mt-1">{p.description}</p>
+        )}
+        {sourceLine && (
+          <p className="font-label text-[8px] text-ink-faint uppercase mt-2 truncate">{sourceLine}</p>
+        )}
+      </div>
+    </figure>
+  );
+}
+
 const timeLabel = (d: Date) =>
   d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
 
@@ -389,7 +461,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                             <p className={`font-display text-ink leading-relaxed break-words ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
                               {item.contentType === 'link' ? (
                                 <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
-                                  {titleForUrl(item.contentText)}
+                                  {item.preview?.title || titleForUrl(item.contentText)}
                                 </span>
                               ) : expanded ? item.contentText : plainPreview(item.contentText)}
                             </p>
@@ -400,9 +472,18 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                             </p>
                           )}
                         </div>
-                        {/* Tiny tipped-in thumbnail on collapsed image rows */}
+                        {/* Tiny tipped-in thumbnail on collapsed image and link rows */}
                         {!expanded && showPreviews && (item.fileUrl || item.fileKey) && item.contentType === 'image' && (
                           <EntryThumb item={item} />
+                        )}
+                        {!expanded && showPreviews && item.contentType === 'link' && item.preview?.image && (
+                          <img
+                            src={item.preview.image}
+                            alt=""
+                            loading="lazy"
+                            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            className="w-11 h-11 object-cover border-[1.5px] border-ink flex-shrink-0 rotate-2 shadow-[2px_2px_0_var(--ink)] group-hover:rotate-0 transition-transform"
+                          />
                         )}
                       </div>
                     ) : (
@@ -453,6 +534,11 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           className="overflow-hidden"
                           onClick={(e) => e.stopPropagation()}
                         >
+                          {/* The page's own card for saved links */}
+                          {showPreviews && item.contentType === 'link' && (
+                            <LinkPlate item={item} onOpen={() => openLink(item)} />
+                          )}
+
                           {/* Tipped-in photograph: matte frame, tape, caption */}
                           {showPreviews && (item.fileUrl || item.fileKey) && item.contentType === 'image' && (
                             <PhotoPlate item={item} />

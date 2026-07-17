@@ -1,3 +1,12 @@
+export interface LinkPreview {
+  title?: string;
+  description?: string;
+  image?: string;
+  site?: string;
+  // Embeddable player URL (YouTube/Vimeo); the card becomes playable in place.
+  video?: string;
+}
+
 export interface SavedContent {
   id: string;
   contentText: string;
@@ -9,6 +18,9 @@ export interface SavedContent {
   fileUrl?: string;
   // Reference into the IndexedDB file drawer; replaces embedded data URLs.
   fileKey?: string;
+  // The page's own card for saved links: title, image, and blurb, fetched once
+  // at save time. Rides inside the encrypted payload like the text it belongs to.
+  preview?: LinkPreview;
   reminderDate?: Date;
   userId: string;
   category: string;

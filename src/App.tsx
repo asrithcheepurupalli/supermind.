@@ -32,6 +32,7 @@ import { hapticTap, hapticSuccess } from './utils/haptics';
 import { MAX_FILE_SIZE, notebookStorage } from './utils/notebookStorage';
 import { storeFile, dataUrlToBlob } from './utils/fileVault';
 import { notifyReminder } from './utils/reminders';
+import { fetchLinkPreview } from './utils/linkPreview';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
 import { Analytics } from '@vercel/analytics/react';
@@ -386,21 +387,67 @@ function App() {
     return () => window.removeEventListener('paste', onPaste);
   }, [canCapture, addContent]);
 
-  // PWA share target: content shared from another app arrives as URL params.
+  // Anything stashed while the notebook was closed or sealed files the
+  // moment it opens.
+  const flushPendingCapture = React.useCallback(async () => {
+    let raw: string | null = null;
+    try {
+      raw = localStorage.getItem('supermind_pending_capture');
+      if (raw) localStorage.removeItem('supermind_pending_capture');
+    } catch { /* private mode */ }
+    if (!raw) return;
+    try {
+      const capture = JSON.parse(raw) as SavedContent;
+      if (capture?.contentText) {
+        await addContent(capture);
+        toast('The share you sent earlier is filed now.');
+      }
+    } catch { /* malformed stash */ }
+  }, [addContent]);
+
+  // Capture from anywhere: the PWA share sheet, the bookmarklet, and plain
+  // /?add= links all land here as URL params. A lone URL becomes a link
+  // entry carrying its page title; anything else files as a note.
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const shared = [params.get('title'), params.get('text'), params.get('url')]
-      .filter(Boolean).join('\n').trim();
-    if (!shared) return;
+    const title = params.get('title')?.trim() || '';
+    const text = [params.get('text'), params.get('add')].filter(Boolean).join('\n').trim();
+    const explicitUrl = params.get('url')?.trim() || '';
+    if (!text && !explicitUrl && !title) return;
     window.history.replaceState({}, '', window.location.pathname);
+
+    // Android tucks the shared URL inside text; fish it out.
+    const lone = /^https?:\/\/\S+$/i.test(text) && !text.includes('\n') ? text : '';
+    const url = explicitUrl || lone;
+    const capture: SavedContent = url
+      ? { ...makeCapture(url), preview: title ? { title } : undefined }
+      : makeCapture([title, text].filter(Boolean).join('\n'));
+
     if (canCapture) {
-      addContent(makeCapture(shared)).then(() => toast.success('Filed from share'));
+      addContent(capture).then(() => toast.success('Filed from share'));
     } else {
-      try { localStorage.setItem('supermind_first_thought', shared); } catch { /* private mode */ }
+      try { localStorage.setItem('supermind_pending_capture', JSON.stringify(capture)); } catch { /* private mode */ }
     }
     // Run once on mount with whatever auth state the app booted into.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Older links get their cards too: each visit quietly fetches previews
+  // for a handful of card-less links, newest first.
+  const sweptPreviews = React.useRef(false);
+  React.useEffect(() => {
+    if (!canCapture || sweptPreviews.current || !settings.display.showPreviews || !navigator.onLine) return;
+    sweptPreviews.current = true;
+    const cardless = useStore.getState().content
+      .filter(c => c.contentType === 'link' && !c.preview)
+      .slice(0, 6);
+    void (async () => {
+      for (const item of cardless) {
+        const preview = await fetchLinkPreview(item.contentText).catch(() => null);
+        if (preview) useStore.getState().updateContent(item.id, { preview });
+      }
+    })();
+  }, [canCapture, settings.display.showPreviews]);
 
   const handleCreateProfile = async (name: string, email: string, encryptionPassword?: string) => {
     const newUser = {
@@ -425,6 +472,7 @@ function App() {
       await addContent(makeCapture(pending.trim()));
       toast('Your first thought is already filed.');
     }
+    await flushPendingCapture();
   };
 
   const handleShowAbout = () => {
@@ -511,7 +559,12 @@ function App() {
           <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
         </div>
         <div className="w-full max-w-md">
-          <EncryptionSetup onComplete={unlockEncryption} isLogin={true} />
+          <EncryptionSetup
+            onComplete={async (password) => {
+              if (await unlockEncryption(password)) void flushPendingCapture();
+            }}
+            isLogin={true}
+          />
         </div>
         <Toast />
       </div>

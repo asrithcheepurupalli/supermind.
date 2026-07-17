@@ -4,6 +4,7 @@ import { SavedContent, User, Category, FilterState, AppSettings, EncryptedConten
 import { baseCategories } from '../utils/onboarding';
 import { encryptionManager } from '../utils/encryption';
 import { clientSideAI } from '../utils/clientSideAI';
+import { fetchLinkPreview } from '../utils/linkPreview';
 import { notebookStorage } from '../utils/notebookStorage';
 import { removeFile, clearFileVault, clearUrlCache, sealExistingFiles, fileToDataUrl, dataUrlToBlob, storeFile } from '../utils/fileVault';
 import toast from 'react-hot-toast';
@@ -293,6 +294,17 @@ export const useStore = create<AppState>()(
         set((state) => ({ content: [enhancedContent, ...state.content] }));
         await syncEncryptedItem(enhancedContent, set);
         toast.success('Filed.');
+
+        // Links earn their card in the background: the page's own title and
+        // image arrive a moment after filing. A shared title stays as the
+        // fallback if the fetch comes back empty.
+        if (enhancedContent.contentType === 'link' && settings.display.showPreviews) {
+          fetchLinkPreview(enhancedContent.contentText).then((preview) => {
+            if (!preview) return;
+            const still = get().content.find(c => c.id === enhancedContent.id);
+            if (still) get().updateContent(enhancedContent.id, { preview: { ...still.preview, ...preview } });
+          }).catch(() => {});
+        }
       },
 
       updateContent: (id, updates) => {

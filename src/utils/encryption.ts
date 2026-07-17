@@ -67,6 +67,7 @@ class EncryptionManager {
       tags: content.tags,
       fileUrl: content.fileUrl,
       fileKey: content.fileKey,
+      preview: content.preview,
     };
 
     const encryptedBuffer = await crypto.subtle.encrypt(
@@ -116,6 +117,7 @@ class EncryptionManager {
         tags: sensitiveData.tags,
         fileUrl: sensitiveData.fileUrl,
         fileKey: sensitiveData.fileKey,
+        preview: sensitiveData.preview,
         contentType: encryptedContent.contentType as SavedContent['contentType'],
         sourceApp: encryptedContent.sourceApp,
         timestamp: encryptedContent.timestamp,
