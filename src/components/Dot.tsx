@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useStore, defaultFilter } from '../store/useStore';
 import { hapticTap } from '../utils/haptics';
@@ -218,13 +218,13 @@ export default function Dot() {
 
   return (
     <div className="fixed bottom-24 right-5 sm:right-6 z-40 print:!hidden flex flex-col items-end gap-3">
-      <AnimatePresence>
-        {bubbleOpen && suggestion && (
+      {/* No AnimatePresence: the typewriter keeps re-rendering during an
+          exit, which strands ghost bubbles. Enter animation only. */}
+      {bubbleOpen && suggestion && (
           <motion.div
             key={suggestion.id}
             initial={{ opacity: 0, y: 10, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ type: 'spring', stiffness: 320, damping: 22 }}
             className="card-ink-static rounded-sm p-4 max-w-[240px] relative -rotate-[0.5deg]"
           >
@@ -256,8 +256,7 @@ export default function Dot() {
             {/* tail */}
             <span aria-hidden className="absolute -bottom-[7px] right-7 w-3 h-3 bg-paper-raised border-b-[1.5px] border-r-[1.5px] border-ink rotate-45" />
           </motion.div>
-        )}
-      </AnimatePresence>
+      )}
 
       <motion.button
         initial={{ y: 80, opacity: 0, scale: 0.6 }}

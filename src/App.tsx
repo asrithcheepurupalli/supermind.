@@ -25,7 +25,7 @@ import MadeBadge from './components/MadeBadge';
 import SharedNote from './components/SharedNote';
 import Dot from './components/Dot';
 import { parseSharedNote, type SharedNote as SharedNotePayload } from './utils/shareNote';
-import { useStore, getCategoriesWithCounts } from './store/useStore';
+import { useStore, getCategoriesWithCounts, defaultFilter } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
@@ -211,27 +211,35 @@ function App() {
   const notifications = React.useMemo(() => {
     if (!remindersEnabled) return [];
     const now = Date.now();
-    const items: Array<{ id: string; text: string; detail: string; color: string }> = [];
+    const items: Array<{ id: string; text: string; detail: string; color: string; open: () => void }> = [];
     for (const c of content) {
       if (c.metadata?.isGuide) continue;
-      if (c.reminderDate && c.reminderDate.getTime() < now) {
+      if (!c.reminderDate) continue;
+      const open = () => {
+        setFilter({ ...defaultFilter, searchQuery: c.contentText.slice(0, 50) });
+        setActiveView('timeline');
+        setNotificationsOpen(false);
+      };
+      if (c.reminderDate.getTime() < now) {
         items.push({
           id: `overdue-${c.id}`,
           text: `Reminder due: ${c.contentText.slice(0, 60)}`,
           detail: formatDistanceToNow(c.reminderDate, { addSuffix: true }),
           color: 'bg-red-500',
+          open,
         });
-      } else if (c.reminderDate) {
+      } else {
         items.push({
           id: `upcoming-${c.id}`,
           text: `Upcoming: ${c.contentText.slice(0, 60)}`,
           detail: formatDistanceToNow(c.reminderDate, { addSuffix: true }),
           color: 'bg-blue-500',
+          open,
         });
       }
     }
     return items.slice(0, 6);
-  }, [content, remindersEnabled]);
+  }, [content, remindersEnabled, setFilter, setActiveView]);
 
   // Land on the page the user chose in Settings → Display.
   React.useEffect(() => {
@@ -501,6 +509,8 @@ function App() {
                 filter={filter}
                 onFilterChange={(newFilter) => {
                   setFilter(newFilter);
+                  // A filter only means something where the entries are.
+                  setActiveView('timeline');
                   setIsMobileSidebarOpen(false);
                 }}
                 onClose={() => setIsMobileSidebarOpen(false)}
@@ -516,7 +526,11 @@ function App() {
         <Sidebar
           categories={categories}
           filter={filter}
-          onFilterChange={setFilter}
+          onFilterChange={(newFilter) => {
+            setFilter(newFilter);
+            // A filter only means something where the entries are.
+            setActiveView('timeline');
+          }}
         />
       </div>
 
@@ -631,15 +645,19 @@ function App() {
                           Nothing due. Write a note with a deadline and it lands here.
                         </p>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-1">
                           {notifications.map((n) => (
-                            <div key={n.id} className="flex items-start gap-3 pb-3 border-b border-[var(--ink-line)] last:border-0 last:pb-0">
+                            <button
+                              key={n.id}
+                              onClick={() => { hapticTap(); n.open(); }}
+                              className="haptic w-full flex items-start gap-3 py-2 border-b border-[var(--ink-line)] last:border-0 text-left group/notif"
+                            >
                               <div className="w-1.5 h-1.5 bg-accent rounded-full mt-2 flex-shrink-0" />
                               <div className="min-w-0">
-                                <p className="text-ink text-sm truncate">{n.text}</p>
+                                <p className="text-ink text-sm truncate group-hover/notif:text-accent transition-colors">{n.text}</p>
                                 <p className="font-label text-[9px] text-ink-faint mt-0.5">{n.detail}</p>
                               </div>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}

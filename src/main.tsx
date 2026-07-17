@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MotionConfig } from 'framer-motion';
 import '@fontsource-variable/inter';
 import '@fontsource/instrument-serif';
 import '@fontsource/instrument-serif/400-italic.css';
@@ -19,9 +20,13 @@ const start = () => {
   if (started) return;
   started = true;
 
+  // reducedMotion="user": when the OS asks for less motion, framer keeps
+  // opacity fades but drops the springs and slides, everywhere at once.
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <MotionConfig reducedMotion="user">
+        <App />
+      </MotionConfig>
     </StrictMode>
   );
 
