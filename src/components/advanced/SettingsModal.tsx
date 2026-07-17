@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Download, Upload, Trash2, Lock } from 'lucide-react';
+import { X, Download, Upload, Trash2, Lock, Send } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { hapticTap } from '../../utils/haptics';
+import { requestNotificationPermission } from '../../utils/reminders';
 import toast from 'react-hot-toast';
 
 const sections = [
@@ -163,6 +164,36 @@ export default function SettingsModal() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success('Markdown downloaded');
+  };
+
+  // The whole notebook as one file, handed straight to AirDrop or the share
+  // sheet. Device to device, no server ever in the middle.
+  const handlePassNotebook = async () => {
+    hapticTap();
+    const payload = {
+      app: 'supermind',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      owner: user?.name ?? '',
+      items: content,
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const file = new File([json], `supermind-notebook-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
+    if (navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'supermind notebook' });
+        return;
+      } catch {
+        // fall through to download when the user closes the sheet
+      }
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Notebook saved as a file. Move it to the other device and import.');
   };
 
   const handleEraseNotebook = () => {
@@ -359,13 +390,20 @@ export default function SettingsModal() {
       ))}
       <Row
         title="Smart reminders"
-        detail="Notice deadlines and follow-ups in your notes and surface them in the bell."
+        detail="Notice deadlines in your notes, surface them in the bell, and ring a system notification when one comes due while the notebook is open."
       >
         <InkCheck
           value={settings.notifications.reminders}
-          onChange={() => updateSettings({
-            notifications: { ...settings.notifications, reminders: !settings.notifications.reminders },
-          })}
+          onChange={async () => {
+            const turningOn = !settings.notifications.reminders;
+            updateSettings({
+              notifications: { ...settings.notifications, reminders: turningOn },
+            });
+            if (turningOn) {
+              const granted = await requestNotificationPermission();
+              if (!granted) toast('Reminders will show in the bell. Allow notifications for a proper ring.');
+            }
+          }}
         />
       </Row>
       <p className="font-label text-[9px] text-ink-faint mt-5">
@@ -474,6 +512,15 @@ export default function SettingsModal() {
           </p>
         </div>
       )}
+
+      <Row title="Pass to another device" detail="Hands the whole notebook to AirDrop or your share sheet. Open supermind on the other device and import it.">
+        <button
+          onClick={handlePassNotebook}
+          className="btn-ink haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
+        >
+          <Send size={12} /> Pass it
+        </button>
+      </Row>
 
       <Row title="Export everything" detail={`Download all ${content.length} items as a JSON backup.`}>
         <button

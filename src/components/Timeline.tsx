@@ -14,6 +14,13 @@ import { useSearch } from '../hooks/useSearch';
 import { useStore } from '../store/useStore';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
 import { buildShareUrl, renderNoteImage } from '../utils/shareNote';
+import { downloadICS } from '../utils/reminders';
+import { titleForUrl, hostForUrl } from '../utils/linkTitle';
+import InkText from './InkText';
+
+// Does the text use any notation worth rendering richly?
+const hasInkMarkup = (text: string): boolean =>
+  /^\s*- \[( |x)\] /m.test(text) || /^\s*[-*] \S/m.test(text) || /\*\*[^*\n]+\*\*|`[^`\n]+`/.test(text);
 
 interface TimelineProps {
   content: SavedContent[];
@@ -122,6 +129,18 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
   const startEdit = (item: SavedContent) => {
     setEditingId(item.id);
     setEditText(item.contentText);
+  };
+
+  // Tick a checkbox straight in the book: flip that one line, keep the rest
+  // of the ink exactly as written.
+  const toggleCheckLine = (item: SavedContent, lineIndex: number) => {
+    const lines = item.contentText.split('\n');
+    const line = lines[lineIndex];
+    if (!line) return;
+    lines[lineIndex] = line.includes('- [ ]')
+      ? line.replace('- [ ]', '- [x]')
+      : line.replace('- [x]', '- [ ]');
+    updateContent(item.id, { contentText: lines.join('\n') });
   };
 
   const saveEdit = (id: string) => {
@@ -286,13 +305,26 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                   <div className="py-3.5 min-w-0 cursor-pointer" onClick={() => !editing && toggleExpand(item.id)}>
                     {!editing ? (
                       <div className="flex items-start justify-between gap-4">
-                        <p className={`font-display text-ink leading-relaxed break-words min-w-0 ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
-                          {item.contentType === 'link' ? (
-                            <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
-                              {item.contentText}
-                            </span>
-                          ) : item.contentText}
-                        </p>
+                        <div className="min-w-0">
+                          {expanded && item.contentType === 'text' && hasInkMarkup(item.contentText) ? (
+                            <div className="font-display text-ink leading-relaxed break-words text-xl">
+                              <InkText text={item.contentText} onToggleCheck={(li) => toggleCheckLine(item, li)} />
+                            </div>
+                          ) : (
+                            <p className={`font-display text-ink leading-relaxed break-words ${expanded ? 'text-xl' : 'text-lg line-clamp-2'}`}>
+                              {item.contentType === 'link' ? (
+                                <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
+                                  {titleForUrl(item.contentText)}
+                                </span>
+                              ) : item.contentText}
+                            </p>
+                          )}
+                          {item.contentType === 'link' && (
+                            <p className="font-label text-[8px] text-ink-faint mt-1 truncate">
+                              {expanded ? item.contentText : hostForUrl(item.contentText)}
+                            </p>
+                          )}
+                        </div>
                         {/* Tiny tipped-in thumbnail on collapsed image rows */}
                         {!expanded && showPreviews && item.fileUrl && item.contentType === 'image' && (
                           <img
@@ -439,6 +471,18 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                                   className="hover:text-accent transition-colors py-2 sm:py-0"
                                 >
                                   card
+                                </button>
+                              </>
+                            )}
+                            {item.reminderDate && (
+                              <>
+                                <span className="text-ink-faint mx-1.5 sm:mx-2">·</span>
+                                <button
+                                  onClick={() => { hapticTap(); if (downloadICS(item)) toast.success('Calendar event saved. Open it and your phone does the reminding.'); }}
+                                  title="Add this reminder to your calendar"
+                                  className="hover:text-accent transition-colors py-2 sm:py-0"
+                                >
+                                  calendar
                                 </button>
                               </>
                             )}

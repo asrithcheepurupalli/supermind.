@@ -141,6 +141,10 @@ export default function Dot() {
         id: 'passiton',
         text: 'Open any note and try "pass it on". The link carries the note inside it.',
       });
+      list.push({
+        id: 'checkbox',
+        text: 'Start a line with "- [ ]" and it becomes a checkbox you can tick right here in the book.',
+      });
     }
     if (activeView === 'graph') {
       list.push({

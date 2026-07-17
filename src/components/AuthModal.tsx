@@ -7,8 +7,10 @@ import {
   Check,
   Shield,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import EncryptionSetup from './EncryptionSetup';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
+import { useStore } from '../store/useStore';
 
 interface AuthModalProps {
   onComplete: (name: string, email: string, encryptionPassword?: string) => void;
@@ -55,6 +57,30 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
     setPassphrase(password);
     hapticSuccess();
     setStep('building');
+  };
+
+  // A notebook passed from another device: restore profile and entries in
+  // one move, no signup dance. The file never leaves the browser.
+  const restoreInputRef = React.useRef<HTMLInputElement>(null);
+  const handleRestoreFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        const { setUser, importContent } = useStore.getState();
+        const owner = typeof data?.owner === 'string' && data.owner.trim() ? data.owner.trim() : 'friend';
+        setUser({ id: 'local', name: owner, email: '', encryptionEnabled: false, createdAt: new Date() });
+        const count = importContent(data);
+        hapticSuccess();
+        toast.success(`Welcome back, ${owner.split(' ')[0]}. ${count} entries restored.`);
+      } catch {
+        toast.error("That file doesn't look like a supermind notebook.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   // Orchestrated "writing your notebook" sequence, then hand off to the app.
@@ -144,6 +170,22 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
               <p className="font-label text-[10px] text-ink-faint">
                 press <kbd className="keycap keycap-press text-[10px] !py-0.5 !px-2">↵</kbd> to continue
               </p>
+              <p className="font-label text-[9px] text-ink-faint mt-8">
+                moving from another device?{' '}
+                <button
+                  onClick={() => restoreInputRef.current?.click()}
+                  className="text-accent hover:underline underline-offset-2"
+                >
+                  bring your notebook
+                </button>
+              </p>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept="application/json,.json"
+                onChange={handleRestoreFile}
+                className="hidden"
+              />
             </motion.div>
           )}
 

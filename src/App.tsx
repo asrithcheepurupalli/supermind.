@@ -31,6 +31,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
 import { MAX_EMBED_SIZE } from './utils/notebookStorage';
+import { notifyReminder } from './utils/reminders';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
 import { Analytics } from '@vercel/analytics/react';
@@ -128,6 +129,30 @@ function App() {
 
   // Real notifications, derived from the user's own data.
   const remindersEnabled = settings.notifications.reminders;
+
+  // The due-watcher: while the notebook is open, a reminder crossing its
+  // moment fires a system notification (permission allowing) and a toast.
+  // Once per session per reminder; the bell panel keeps the durable record.
+  const firedRemindersRef = React.useRef<Set<string>>(new Set());
+  React.useEffect(() => {
+    if (!remindersEnabled || !isAuthenticated) return;
+    const tick = () => {
+      const now = Date.now();
+      for (const c of useStore.getState().content) {
+        if (!c.reminderDate) continue;
+        const t = c.reminderDate.getTime();
+        if (t <= now && t > now - 60 * 60 * 1000 && !firedRemindersRef.current.has(c.id)) {
+          firedRemindersRef.current.add(c.id);
+          notifyReminder(c);
+          toast(`Reminder: ${c.contentText.split('\n')[0].slice(0, 60)}`);
+        }
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 30000);
+    return () => window.clearInterval(id);
+  }, [remindersEnabled, isAuthenticated]);
+
   const notifications = React.useMemo(() => {
     if (!remindersEnabled) return [];
     const now = Date.now();

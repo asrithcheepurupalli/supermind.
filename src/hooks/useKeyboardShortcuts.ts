@@ -12,14 +12,25 @@ export const useKeyboardShortcuts = () => {
       const { ctrlKey, metaKey, shiftKey, key } = event;
       const isModifierPressed = ctrlKey || metaKey;
 
-      // The command palette is global — it opens even while typing.
+      // Modifier chords are global — they work even mid-sentence, because
+      // reaching for ⌘N while typing in quick capture is a deliberate act.
       if (key === 'k' && isModifierPressed) {
         event.preventDefault();
         setCommandPaletteOpen(true);
         return;
       }
+      if (key === 'n' && isModifierPressed) {
+        event.preventDefault();
+        setUploadModalOpen(true);
+        return;
+      }
+      if (key === ',' && isModifierPressed) {
+        event.preventDefault();
+        setSettingsModalOpen(true);
+        return;
+      }
 
-      // Everything else stays out of the way while the user is typing.
+      // Single-key shortcuts stay out of the way while the user is typing.
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
         return;
       }
@@ -44,20 +55,6 @@ export const useKeyboardShortcuts = () => {
       }
 
       switch (key) {
-        case 'n':
-          if (isModifierPressed) {
-            event.preventDefault();
-            setUploadModalOpen(true);
-          }
-          break;
-
-        case ',':
-          if (isModifierPressed) {
-            event.preventDefault();
-            setSettingsModalOpen(true);
-          }
-          break;
-
         case 'Escape':
           setUploadModalOpen(false);
           setSettingsModalOpen(false);

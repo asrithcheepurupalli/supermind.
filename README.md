@@ -12,15 +12,19 @@ Most note apps are a database you rent. This one is a notebook you own. Everythi
 
 **Capture.** This is the whole product, so it works from everywhere. Press Ctrl+N (or Cmd+N) and start typing. Paste text, a link, or an image anywhere in the app, outside a text field, and it files itself on the spot. Install it on a phone and it shows up in the share sheet, so anything you can share becomes a note. You can even write your first thought on the landing page before you have a profile; it will be waiting inside, already filed. Small files are embedded whole so they survive reloads; big ones keep their name and metadata.
 
-**Organize.** As you save, the app tags and categorizes each entry and writes a short summary for longer ones. If a note mentions a deadline or a follow-up, it becomes a reminder. All of this is plain heuristics running in your browser. No model, no API calls, and the code doesn't pretend otherwise.
+**Organize.** As you save, the app tags each entry with the strongest words you actually wrote, sorts it into a category, and writes a short summary for longer ones. Dates in plain language become real reminders: "call mom on tuesday at 5pm", "rent due aug 3", "in 3 days" all resolve to the right moment. All of this is heuristics running in your browser. No model, no API calls, and the code doesn't pretend otherwise.
 
 **Find.** Ctrl+K opens a command palette with fuzzy search across everything: content, summaries, tags, sources. Filters stack on top: category, type, tag, date, starred.
 
 **See the shape of it.** The graph view draws your tags as a constellation, connected when they appear together. The almanac view is a printed page of your own stats: capture activity over thirty days, most-used tags, patterns like when you write most.
 
+**Write lists that work.** Start a line with `- [ ]` and it renders as a checkbox you can tick right in the book. Bullets, **bold**, *italic*, and `code` notation render too; the stored text stays plain markdown.
+
+**Be reminded.** Reminders ring a system notification when they come due while the notebook is open, and any dated entry can be handed to your calendar as an .ics event, so your phone does the reminding when the notebook is closed.
+
 **Lock it.** Optional encryption at rest with AES-256-GCM. The key comes from your passphrase through PBKDF2 at 250,000 iterations, lives only in memory, and is cleared when you lock the app or walk away with auto-lock on. Lose the passphrase and the data stays locked. Real encryption has no reset button, so export backups.
 
-**Take it out.** One click exports everything as JSON. Import merges a backup back in and skips duplicates. Print any page and the interface disappears, leaving just the content on paper.
+**Take it out.** One click exports everything as JSON or Markdown. "Pass to another device" hands the whole notebook to AirDrop or your share sheet, and the receiving device can restore it during onboarding with one tap. Import merges and skips duplicates. Print any page and the interface disappears, leaving just the content on paper.
 
 ## Running it
 
@@ -60,7 +64,7 @@ When encryption is on, the sensitive fields of every item are encrypted before a
 
 ## Limits worth knowing
 
-Storage is IndexedDB, so a notebook can grow to gigabytes, and the browser is asked to treat it as persistent. Files up to 8MB tuck into the notebook itself; anything bigger is recorded by name only, because a notebook is not a media library. There is no multi-device sync; export and import is the way to move data. And the automatic tagging is keyword heuristics, which are fast and private but not clever.
+Storage is IndexedDB, so a notebook can grow to gigabytes, and the browser is asked to treat it as persistent. Files up to 8MB tuck into the notebook itself; anything bigger is recorded by name only, because a notebook is not a media library. There is no background sync; moving between devices is a deliberate hand-off, one file, never a server. And the organizer is deterministic heuristics reading your own words, which is fast and private, but it is not a language model.
 
 ## Contributing
 

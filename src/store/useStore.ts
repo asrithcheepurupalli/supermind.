@@ -361,6 +361,7 @@ export const useStore = create<AppState>()(
           app: 'supermind',
           version: 1,
           exportedAt: new Date().toISOString(),
+          owner: get().user?.name ?? '',
           items,
         };
         const dataBlob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });

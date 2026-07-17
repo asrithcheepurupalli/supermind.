@@ -292,13 +292,11 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
               dragActive ? 'outline outline-2 outline-[var(--accent)] outline-offset-4' : ''
             }`}
           >
-            {/* FILED, with a thump */}
-            <AnimatePresence>
-              {stamped && (
+            {/* FILED, with a thump (no nested AnimatePresence, see above) */}
+            {stamped && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
                   className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none"
                 >
                   <motion.span
@@ -310,8 +308,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                     FILED
                   </motion.span>
                 </motion.div>
-              )}
-            </AnimatePresence>
+            )}
 
             {/* Page header */}
             <div className="flex items-center justify-between px-7 pt-5 pb-4 border-b border-[var(--ink-line)]">
@@ -342,15 +339,15 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
               />
             </div>
 
-            {/* The librarian's pencil line: how this page will be filed */}
+            {/* The librarian's pencil line: how this page will be filed.
+                No nested AnimatePresence here: a nested exit animation can
+                wedge the parent's exit and the modal never reopens. */}
             <div className="px-7 min-h-[26px] pb-1">
-              <AnimatePresence mode="wait">
-                {notes && (
+              {notes && (
                   <motion.div
                     key={[notes.category, ...notes.tags, notes.reminder ? 'r' : '', notes.linkInside ?? ''].join('|')}
                     initial={{ opacity: 0, y: 3 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
                     transition={{ duration: 0.16 }}
                     className="flex items-center gap-x-3 gap-y-1 flex-wrap font-label text-[8px] text-ink-faint"
                   >
@@ -367,8 +364,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                       <span>carries a link</span>
                     )}
                   </motion.div>
-                )}
-              </AnimatePresence>
+              )}
             </div>
 
             {/* Or a link */}
@@ -384,13 +380,11 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
               />
             </div>
 
-            {/* Attachments wait as tipped-in slips */}
-            <AnimatePresence>
-              {staged.length > 0 && (
+            {/* Attachments wait as tipped-in slips (no nested exit, see above) */}
+            {staged.length > 0 && (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
                   <div className="px-7 pt-2 pb-3 flex flex-wrap gap-3">
@@ -426,8 +420,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                     ))}
                   </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
+            )}
 
             {/* Footer: attach + file it */}
             <div className="flex items-center justify-between px-7 py-4 border-t border-[var(--ink-line)]">

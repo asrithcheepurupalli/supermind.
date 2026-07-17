@@ -527,8 +527,8 @@ export default function AboutPage({ onBack }: AboutPageProps) {
           </div>
           <div className="space-y-5">
             {[
-              ['It does not sync.', 'Local first means exactly that. Export and import moves your data between machines.'],
-              ['It is not an AI.', 'The organizer is keyword heuristics, fast and private. Useful, not clever.'],
+              ['It does not sync by itself.', 'Local first means exactly that. Pass the notebook between devices from settings; it travels as a file, never through a server.'],
+              ['It is not an AI.', 'The organizer reads your own words for tags and real dates for reminders. Clever heuristics, still just code on your device.'],
               ['It is not a media library.', 'Files up to 8MB tuck into the notebook itself. Anything bigger is recorded by name only.'],
               ['It cannot reset your passphrase.', 'Real encryption has no back door. Keep a backup.'],
             ].map(([title, detail]) => (
