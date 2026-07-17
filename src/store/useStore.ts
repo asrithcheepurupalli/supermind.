@@ -4,6 +4,7 @@ import { SavedContent, User, Category, FilterState, AppSettings, EncryptedConten
 import { baseCategories } from '../utils/onboarding';
 import { encryptionManager } from '../utils/encryption';
 import { clientSideAI } from '../utils/clientSideAI';
+import { notebookStorage } from '../utils/notebookStorage';
 import toast from 'react-hot-toast';
 
 export const defaultFilter: FilterState = {
@@ -117,26 +118,9 @@ export const getCategoriesWithCounts = (content: SavedContent[]): Category[] =>
     count: cat.id === 'all' ? content.length : content.filter(c => c.category === cat.id).length,
   }));
 
-// localStorage can be unavailable (sandboxed iframes, privacy modes).
-// Fall back to in-memory storage so the app still runs — without persistence.
-const memoryStore = new Map<string, string>();
-const safeStorage = (): Storage => {
-  try {
-    const probe = '__supermind_probe__';
-    window.localStorage.setItem(probe, '1');
-    window.localStorage.removeItem(probe);
-    return window.localStorage;
-  } catch {
-    return {
-      getItem: (k: string) => memoryStore.get(k) ?? null,
-      setItem: (k: string, v: string) => { memoryStore.set(k, v); },
-      removeItem: (k: string) => { memoryStore.delete(k); },
-      clear: () => memoryStore.clear(),
-      key: (i: number) => [...memoryStore.keys()][i] ?? null,
-      get length() { return memoryStore.size; },
-    } as Storage;
-  }
-};
+// The notebook lives in IndexedDB (gigabytes, persist()-protected), with a
+// one-time silent migration from the old 5MB localStorage shelf and graceful
+// fallbacks when the browser offers less. See utils/notebookStorage.
 
 const parseDate = (value: unknown): Date | undefined => {
   if (!value) return undefined;
@@ -452,13 +436,13 @@ export const useStore = create<AppState>()(
           settings: defaultSettings,
         });
         // Remove persisted data after the state update flushes.
-        setTimeout(() => safeStorage().removeItem('supermind-storage'), 50);
+        setTimeout(() => notebookStorage.removeItem('supermind-storage'), 50);
         toast.success('Signed out. Local data cleared.');
       },
     }),
     {
       name: 'supermind-storage',
-      storage: createJSONStorage(() => safeStorage(), {
+      storage: createJSONStorage(() => notebookStorage, {
         // Revive Date fields (timestamp/reminderDate) that JSON turned into strings.
         reviver: (key, value) => {
           if ((key === 'timestamp' || key === 'reminderDate') && typeof value === 'string') {

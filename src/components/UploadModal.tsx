@@ -5,15 +5,13 @@ import toast from 'react-hot-toast';
 import { SavedContent } from '../types';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 import { clientSideAI } from '../utils/clientSideAI';
+import { MAX_EMBED_SIZE } from '../utils/notebookStorage';
 
 interface UploadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddContent: (content: SavedContent) => Promise<void> | void;
 }
-
-// Files up to this size are embedded as data URLs so they survive reloads.
-const MAX_EMBED_SIZE = 1.5 * 1024 * 1024;
 
 const newId = () =>
   `item_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -142,7 +140,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
     } else if (!s.tooBig) {
       fileUrl = await readFileAsDataURL(s.file);
     } else {
-      toast(`"${s.file.name}" is over 1.5MB, so only its name was filed (local storage keeps things small).`);
+      toast(`"${s.file.name}" is over 8MB, so only its name was filed. Big media belongs in a real library.`);
     }
 
     await onAddContent({

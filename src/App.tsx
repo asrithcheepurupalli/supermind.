@@ -30,6 +30,7 @@ import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
+import { MAX_EMBED_SIZE } from './utils/notebookStorage';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
 import { Analytics } from '@vercel/analytics/react';
@@ -225,7 +226,7 @@ function App() {
       const imageItem = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'));
       if (imageItem) {
         const file = imageItem.getAsFile();
-        if (file && file.size <= 1.5 * 1024 * 1024) {
+        if (file && file.size <= MAX_EMBED_SIZE) {
           e.preventDefault();
           const fileUrl = await new Promise<string>((resolve, reject) => {
             const r = new FileReader();

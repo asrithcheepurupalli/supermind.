@@ -82,17 +82,19 @@ export default function SettingsModal() {
   const importInputRef = React.useRef<HTMLInputElement>(null);
   const securityScore = getSecurityScore();
 
-  // How full the notebook is. localStorage allows ~5MB.
-  const storage = React.useMemo(() => {
-    try {
-      const raw = window.localStorage.getItem('supermind-storage') ?? '';
-      const usedKB = Math.round((raw.length * 2) / 1024);
-      const capKB = 5 * 1024;
-      return { usedKB, capKB, pct: Math.min(100, Math.round((usedKB / capKB) * 100)) };
-    } catch {
-      return null;
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // How full the notebook is. IndexedDB quotas run to gigabytes; ask the
+  // browser for the real numbers instead of assuming a ceiling.
+  const [storage, setStorage] = React.useState<{ usedKB: number; capKB: number; pct: number } | null>(null);
+  React.useEffect(() => {
+    if (!isSettingsModalOpen) return;
+    let alive = true;
+    navigator.storage?.estimate?.().then(({ usage, quota }) => {
+      if (!alive || !quota) return;
+      const usedKB = Math.round((usage ?? 0) / 1024);
+      const capKB = Math.round(quota / 1024);
+      setStorage({ usedKB, capKB, pct: Math.min(100, Math.max(usedKB > 0 ? 1 : 0, Math.round((usedKB / capKB) * 100))) });
+    }).catch(() => setStorage(null));
+    return () => { alive = false; };
   }, [content.length, isSettingsModalOpen]);
 
   // Open on the section requested by the caller (e.g. Profile → Privacy & Security).
@@ -460,14 +462,15 @@ export default function SettingsModal() {
           <div className="flex items-baseline justify-between mb-1.5">
             <p className="font-label text-[9px] text-ink-soft">notebook weight</p>
             <p className="font-label text-[9px] text-ink-faint tabular-nums">
-              {storage.usedKB < 1024 ? `${storage.usedKB} KB` : `${(storage.usedKB / 1024).toFixed(1)} MB`} of ~5 MB
+              {storage.usedKB < 1024 ? `${storage.usedKB} KB` : `${(storage.usedKB / 1024).toFixed(1)} MB`} of{' '}
+              {storage.capKB < 1024 * 1024 ? `${Math.round(storage.capKB / 1024)} MB` : `${(storage.capKB / (1024 * 1024)).toFixed(0)} GB`} available
             </p>
           </div>
           <div className="h-[5px] border border-ink rounded-full overflow-hidden bg-paper-raised">
             <div className="h-full bg-accent transition-all" style={{ width: `${Math.max(1, storage.pct)}%` }} />
           </div>
           <p className="font-label text-[8px] text-ink-faint mt-1.5">
-            everything lives in this browser's storage. export regularly.
+            everything lives on this device. an occasional export is your fire safe.
           </p>
         </div>
       )}

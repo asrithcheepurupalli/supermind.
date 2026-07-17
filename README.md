@@ -54,13 +54,13 @@ Press `?` in the app for the full list. The short version:
 
 ## How it's built
 
-React 18 with TypeScript, bundled by Vite. State is a single Zustand store persisted to localStorage. Search is Fuse.js. Encryption uses the Web Crypto API directly. The graph is a custom force simulation on a canvas, no charting library. Styling is Tailwind plus a small set of design tokens: warm paper, ink, one vermilion accent, a serif for display type and a mono for labels.
+React 18 with TypeScript, bundled by Vite. State is a single Zustand store persisted to IndexedDB, with a silent migration for notebooks that began life in localStorage. Search is Fuse.js. Encryption uses the Web Crypto API directly. The graph is a custom force simulation on a canvas, no charting library. Styling is Tailwind plus a small set of design tokens: warm paper, ink, one vermilion accent, a serif for display type and a mono for labels.
 
 When encryption is on, the sensitive fields of every item are encrypted before anything touches storage. Plaintext exists only in memory while the app is unlocked.
 
 ## Limits worth knowing
 
-localStorage holds around 5MB, so this is for notes and small files, not a media library. Files over 1.5MB are recorded by name only. There is no multi-device sync; export and import is the way to move data. And the automatic tagging is keyword heuristics, which are fast and private but not clever.
+Storage is IndexedDB, so a notebook can grow to gigabytes, and the browser is asked to treat it as persistent. Files up to 8MB tuck into the notebook itself; anything bigger is recorded by name only, because a notebook is not a media library. There is no multi-device sync; export and import is the way to move data. And the automatic tagging is keyword heuristics, which are fast and private but not clever.
 
 ## Contributing
 
