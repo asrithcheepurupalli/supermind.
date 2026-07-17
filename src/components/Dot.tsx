@@ -69,7 +69,7 @@ function TypeOut({ text }: { text: string }) {
 export default function Dot() {
   const {
     activeView, content, settings, setUploadModalOpen, setCommandPaletteOpen,
-    setActiveView, setFilter,
+    setActiveView, setFilter, setSettingsModalOpen, lastExportAt,
   } = useStore();
 
   const enabled = settings.display.companion !== false;
@@ -164,12 +164,31 @@ export default function Dot() {
         text: 'Your flyleaf. I work for you only; I never phone home.',
       });
     }
+    // The only copy of this notebook lives on this device. Past a certain
+    // weight, that deserves a word.
+    const backupOverdue = !lastExportAt
+      || Date.now() - new Date(lastExportAt).getTime() > 30 * 24 * 60 * 60 * 1000;
+    if (items.length >= 15 && backupOverdue) {
+      list.push({
+        id: 'backup',
+        text: lastExportAt
+          ? 'It has been a month since this notebook last left the device. A fresh backup takes one tap.'
+          : 'The only copy of this notebook lives on this device. Pass it to another one, or keep a backup file somewhere safe.',
+        action: { label: 'open the drawer', run: () => setSettingsModalOpen(true, 'data') },
+      });
+    }
+    if (activeView === 'timeline' && items.some(i => i.reminderDate && i.reminderDate.getTime() > Date.now())) {
+      list.push({
+        id: 'icsnudge',
+        text: 'I can only ring while the book is open. The calendar action on a dated entry makes your phone do the ringing.',
+      });
+    }
     list.push({
       id: 'paste',
       text: 'Read something good? Paste the link anywhere and I will file it.',
     });
     return list;
-  }, [activeView, items, setUploadModalOpen, setCommandPaletteOpen, setActiveView, setFilter]);
+  }, [activeView, items, lastExportAt, setUploadModalOpen, setCommandPaletteOpen, setActiveView, setFilter, setSettingsModalOpen]);
 
   // Speak when the view changes: pick the top suggestion not said last time.
   React.useEffect(() => {

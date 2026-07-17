@@ -15,6 +15,13 @@ import { hapticSuccess, hapticTap } from '../utils/haptics';
 // Phones get thumb-first wording; keyboards get shortcuts.
 const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
+// iPhone Safari sweeps website storage after a week of neglect, but a
+// home-screen app is exempt. Worth one gentle card.
+const isIosBrowserTab = typeof window !== 'undefined'
+  && (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1))
+  && !window.matchMedia('(display-mode: standalone)').matches
+  && (navigator as unknown as { standalone?: boolean }).standalone !== true;
+
 const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
 const computeStreak = (items: SavedContent[]): number => {
@@ -285,6 +292,31 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+        </motion.div>
+      )}
+
+      {/* iPhone in a browser tab: one card, once, about keeping the notebook safe */}
+      {isIosBrowserTab && !firstRun.iosHint && (
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-ink-static rounded-sm p-5 mb-8 relative rotate-[0.3deg]"
+        >
+          <p className="font-label text-[9px] text-accent mb-2">worth thirty seconds</p>
+          <p className="font-display text-lg text-ink leading-snug mb-1.5">
+            Put this notebook on your home screen.
+          </p>
+          <p className="text-ink-soft text-sm leading-relaxed">
+            Safari quietly sweeps website storage it has not seen for a week. A home
+            screen app is exempt, forever. Tap the share button, then "Add to Home Screen",
+            and your notebook is out of the broom's reach.
+          </p>
+          <button
+            onClick={() => { hapticTap(); markFirstRun('iosHint'); }}
+            className="font-label text-[9px] text-ink-faint hover:text-accent transition-colors mt-3"
+          >
+            done, or not on an iPhone
+          </button>
         </motion.div>
       )}
 

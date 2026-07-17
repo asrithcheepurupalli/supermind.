@@ -76,7 +76,13 @@ interface AppState {
   settings: AppSettings;
 
   // First-run progress: which of the three starter moves are done.
-  firstRun: { palette: boolean; theme: boolean; dismissed: boolean };
+  firstRun: { palette: boolean; theme: boolean; dismissed: boolean; iosHint?: boolean };
+  // Ids of deleted entries, kept so another tab's reconcile never
+  // resurrects them (and deletions propagate between tabs).
+  tombstones: string[];
+  // When the notebook last left this device as a backup.
+  lastExportAt?: string;
+  markExported: () => void;
 
   // Loading States
   isLoading: boolean;
@@ -108,7 +114,7 @@ interface AppState {
   importContent: (content: unknown) => number;
   deleteAllContent: () => void;
   getSecurityScore: () => number;
-  markFirstRun: (key: 'palette' | 'theme' | 'dismissed') => void;
+  markFirstRun: (key: 'palette' | 'theme' | 'dismissed' | 'iosHint') => void;
   logout: () => void;
 }
 
@@ -179,6 +185,9 @@ export const useStore = create<AppState>()(
       selectedContent: null,
       settings: defaultSettings,
       firstRun: { palette: false, theme: false, dismissed: false },
+      tombstones: [],
+      lastExportAt: undefined,
+      markExported: () => set({ lastExportAt: new Date().toISOString() }),
       isLoading: false,
       isProcessing: false,
 
@@ -302,6 +311,7 @@ export const useStore = create<AppState>()(
         set((state) => ({
           content: state.content.filter(item => item.id !== id),
           encryptedContent: state.encryptedContent.filter(item => item.id !== id),
+          tombstones: [...state.tombstones, id].slice(-1000),
         }));
       },
 
@@ -351,6 +361,7 @@ export const useStore = create<AppState>()(
         set((state) => ({
           content: state.content.filter(item => !ids.includes(item.id)),
           encryptedContent: state.encryptedContent.filter(item => !ids.includes(item.id)),
+          tombstones: [...state.tombstones, ...ids].slice(-1000),
         }));
       },
 
@@ -394,6 +405,7 @@ export const useStore = create<AppState>()(
         link.download = `supermind-export-${new Date().toISOString().split('T')[0]}.json`;
         link.click();
         URL.revokeObjectURL(url);
+        set({ lastExportAt: new Date().toISOString() });
       },
 
       importContent: (data) => {
@@ -439,7 +451,12 @@ export const useStore = create<AppState>()(
 
       deleteAllContent: () => {
         void clearFileVault();
-        set({ content: [], encryptedContent: [], selectedContent: null });
+        set((state) => ({
+          content: [],
+          encryptedContent: [],
+          selectedContent: null,
+          tombstones: [...state.tombstones, ...state.content.map(c => c.id)].slice(-1000),
+        }));
       },
 
       getSecurityScore: () => {
@@ -502,6 +519,8 @@ export const useStore = create<AppState>()(
         content: state.user?.encryptionEnabled ? [] : state.content,
         settings: state.settings,
         firstRun: state.firstRun,
+        tombstones: state.tombstones,
+        lastExportAt: state.lastExportAt,
       }),
       migrate: (persistedState: unknown, version: number) => {
         const state = (persistedState ?? {}) as Partial<AppState> & { settings?: AppSettings };
@@ -526,6 +545,7 @@ export const useStore = create<AppState>()(
         return {
           ...current,
           ...state,
+          tombstones: Array.isArray(state.tombstones) ? state.tombstones : [],
           // The old guide system is gone; drop any seeded guide entries.
           // Meta-tags from earlier versions ("text", "contains-link", ...)
           // said nothing the type glyph doesn't; sweep them from old ink.

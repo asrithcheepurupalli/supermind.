@@ -213,19 +213,33 @@ function App() {
         if (state.user?.encryptionEnabled) return; // plaintext never persisted while sealed
         const raw = await notebookStorage.getItem('supermind-storage');
         if (!raw) return;
-        const diskContent = (JSON.parse(raw) as { state?: { content?: unknown[] } })?.state?.content;
+        const disk = (JSON.parse(raw) as { state?: { content?: unknown[]; tombstones?: string[] } })?.state;
+        const diskContent = disk?.content;
         if (!Array.isArray(diskContent)) return;
+        const diskTombstones = new Set(Array.isArray(disk?.tombstones) ? disk.tombstones : []);
+        const localTombstones = new Set(state.tombstones);
         const have = new Set(state.content.map(c => c.id));
+
+        // Adopt what the other tab filed, unless we deleted it here.
         const missing = (diskContent as SavedContent[])
-          .filter(c => c && typeof c.id === 'string' && typeof c.contentText === 'string' && !have.has(c.id))
+          .filter(c => c && typeof c.id === 'string' && typeof c.contentText === 'string'
+            && !have.has(c.id) && !localTombstones.has(c.id))
           .map(c => ({
             ...c,
             timestamp: new Date(c.timestamp),
             reminderDate: c.reminderDate ? new Date(c.reminderDate) : undefined,
           }))
           .filter(c => !isNaN(c.timestamp.getTime()));
-        if (missing.length === 0) return;
-        useStore.setState(s => ({ content: [...missing, ...s.content] }));
+
+        // Honor what the other tab deleted.
+        const removedHere = state.content.some(c => diskTombstones.has(c.id));
+        const mergedTombstones = [...new Set([...state.tombstones, ...diskTombstones])].slice(-1000);
+
+        if (missing.length === 0 && !removedHere && mergedTombstones.length === state.tombstones.length) return;
+        useStore.setState(s => ({
+          content: [...missing, ...s.content].filter(c => !diskTombstones.has(c.id)),
+          tombstones: mergedTombstones,
+        }));
       } catch {
         // A reconcile that fails changes nothing; the next focus tries again.
       }

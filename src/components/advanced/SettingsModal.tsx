@@ -87,6 +87,7 @@ export default function SettingsModal() {
   // How full the notebook is. IndexedDB quotas run to gigabytes; ask the
   // browser for the real numbers instead of assuming a ceiling.
   const [storage, setStorage] = React.useState<{ usedKB: number; capKB: number; pct: number } | null>(null);
+  const [durable, setDurable] = React.useState<boolean | null>(null);
   React.useEffect(() => {
     if (!isSettingsModalOpen) return;
     let alive = true;
@@ -96,8 +97,17 @@ export default function SettingsModal() {
       const capKB = Math.round(quota / 1024);
       setStorage({ usedKB, capKB, pct: Math.min(100, Math.max(usedKB > 0 ? 1 : 0, Math.round((usedKB / capKB) * 100))) });
     }).catch(() => setStorage(null));
+    navigator.storage?.persisted?.().then(p => { if (alive) setDurable(p); }).catch(() => setDurable(null));
     return () => { alive = false; };
   }, [content.length, isSettingsModalOpen]);
+
+  const askForDurable = async () => {
+    hapticTap();
+    const granted = await navigator.storage?.persist?.().catch(() => false);
+    setDurable(!!granted);
+    if (granted) toast.success('The browser agreed: this notebook will not be evicted.');
+    else toast('The browser declined for now. Using the app more, or installing it, usually earns it.');
+  };
 
   // Open on the section requested by the caller (e.g. Profile → Privacy & Security).
   React.useEffect(() => {
@@ -187,6 +197,7 @@ export default function SettingsModal() {
       items,
     };
     const json = JSON.stringify(payload, null, 2);
+    useStore.getState().markExported();
     const file = new File([json], `supermind-notebook-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
     if (navigator.canShare?.({ files: [file] })) {
       try {
@@ -519,6 +530,20 @@ export default function SettingsModal() {
           <p className="font-label text-[8px] text-ink-faint mt-1.5">
             everything lives on this device. an occasional export is your fire safe.
           </p>
+          {durable !== null && (
+            <p className="font-label text-[8px] mt-1 flex items-center gap-2">
+              {durable ? (
+                <span className="text-ink-faint">the browser has promised not to evict this storage</span>
+              ) : (
+                <>
+                  <span className="text-accent">storage is provisional; the browser may reclaim it</span>
+                  <button onClick={askForDurable} className="text-ink underline underline-offset-2 hover:text-accent transition-colors">
+                    ask it to keep this safe
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </div>
       )}
 

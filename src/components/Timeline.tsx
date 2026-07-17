@@ -253,7 +253,9 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success('Link copied. The note travels inside it; no server involved.');
+      toast.success(item.contentText.length > 4000
+        ? 'Link copied. Long note: the link carries the first stretch of it.'
+        : 'Link copied. The note travels inside it; no server involved.');
     } catch {
       toast.error('Could not reach the clipboard');
     }
