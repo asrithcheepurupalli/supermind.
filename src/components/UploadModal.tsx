@@ -264,7 +264,8 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-start sm:items-center justify-center p-2 pt-2 sm:p-4"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.5rem)' }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-50 flex items-start sm:items-center justify-center p-2 sm:p-4"
           onClick={onClose}
           onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
         >

@@ -326,7 +326,7 @@ export default function AboutPage({ onBack }: AboutPageProps) {
   return (
     <div className="min-h-screen bg-paper text-ink noise">
       {/* Header */}
-      <header className="border-b-[1.5px] border-ink bg-paper sticky top-0 z-40">
+      <header className="border-b-[1.5px] border-ink bg-paper sticky top-0 z-40 safe-area-top">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-baseline gap-1">
             <span className="font-display text-xl tracking-tight">supermind</span>

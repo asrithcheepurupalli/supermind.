@@ -495,15 +495,15 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
       {/* Reading progress: an ink rule drawing itself across the top */}
       <motion.div
         aria-hidden
-        style={{ scaleX: scrollYProgress }}
-        className="fixed top-0 left-0 right-0 h-[3px] bg-accent origin-left z-50"
+        style={{ scaleX: scrollYProgress, top: 'env(safe-area-inset-top, 0px)' }}
+        className="fixed left-0 right-0 h-[3px] bg-accent origin-left z-50"
       />
 
-      {/* Nav */}
+      {/* Nav: clears the status bar when running from the home screen */}
       <motion.header
         initial={{ opacity: 0, y: -12 }}
         animate={{ opacity: 1, y: 0 }}
-        className="sticky top-0 z-50 bg-paper border-b-[1.5px] border-ink"
+        className="sticky top-0 z-50 bg-paper border-b-[1.5px] border-ink safe-area-top"
       >
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-baseline gap-1 group cursor-default">

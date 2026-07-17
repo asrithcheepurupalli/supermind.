@@ -413,7 +413,7 @@ function App() {
               animate={{ x: 0 }}
               exit={{ x: -320 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 bottom-0 z-50 lg:hidden"
+              className="fixed left-0 top-0 bottom-0 z-50 lg:hidden safe-area-top bg-paper"
             >
               <Sidebar
                 categories={categories}
@@ -444,7 +444,8 @@ function App() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-paper border-b-[1.5px] border-ink px-4 lg:px-6 py-3.5 relative z-10 print:hidden"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.875rem)' }}
+          className="bg-paper border-b-[1.5px] border-ink px-4 lg:px-6 pb-3.5 relative z-10 print:hidden"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

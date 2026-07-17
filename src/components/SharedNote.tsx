@@ -25,7 +25,7 @@ export default function SharedNote({ note, isAuthenticated, onSave, onOpenApp }:
 
   return (
     <div className="min-h-screen bg-paper text-ink noise dot-grid flex flex-col">
-      <header className="border-b-[1.5px] border-ink bg-paper">
+      <header className="border-b-[1.5px] border-ink bg-paper safe-area-top">
         <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-baseline gap-1">
             <span className="font-display text-xl tracking-tight">supermind</span>

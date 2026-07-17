@@ -4,6 +4,7 @@ export default function Toast() {
   return (
     <Toaster
       position="top-center"
+      containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
       toastOptions={{
         duration: 4000,
         style: {

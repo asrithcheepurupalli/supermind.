@@ -280,7 +280,8 @@ export default function CommandPalette() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.12 }}
-          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[70] flex items-start justify-center pt-[8vh] sm:pt-[15vh] px-3 sm:px-4"
+          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 7vh)' }}
+          className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[70] flex items-start justify-center sm:!pt-[15vh] px-3 sm:px-4"
           onClick={close}
         >
           <motion.div

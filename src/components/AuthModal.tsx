@@ -80,7 +80,7 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
   return (
     <div className="min-h-screen bg-paper text-ink flex flex-col relative overflow-hidden noise dot-grid">
       {/* Top bar */}
-      <div className="relative z-10 flex items-center justify-between px-8 pt-7">
+      <div className="relative z-10 flex items-center justify-between px-8" style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 1.75rem)' }}>
         <div className="flex items-baseline gap-1">
           <span className="font-display text-2xl tracking-tight">supermind</span>
           <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
