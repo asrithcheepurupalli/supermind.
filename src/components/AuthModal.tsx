@@ -12,6 +12,8 @@ import EncryptionSetup from './EncryptionSetup';
 import { hapticTap, hapticSuccess } from '../utils/haptics';
 import { useStore } from '../store/useStore';
 
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+
 interface AuthModalProps {
   onComplete: (name: string, email: string, encryptionPassword?: string) => void;
 }
@@ -167,9 +169,11 @@ export default function AuthModal({ onComplete }: AuthModalProps) {
                   )}
                 </AnimatePresence>
               </div>
-              <p className="font-label text-[10px] text-ink-faint">
-                press <kbd className="keycap keycap-press text-[10px] !py-0.5 !px-2">↵</kbd> to continue
-              </p>
+              {!isTouch && (
+                <p className="font-label text-[10px] text-ink-faint">
+                  press <kbd className="keycap keycap-press text-[10px] !py-0.5 !px-2">↵</kbd> to continue
+                </p>
+              )}
               <p className="font-label text-[9px] text-ink-faint mt-8">
                 moving from another device?{' '}
                 <button

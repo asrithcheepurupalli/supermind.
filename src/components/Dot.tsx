@@ -4,6 +4,13 @@ import { X } from 'lucide-react';
 import { useStore, defaultFilter } from '../store/useStore';
 import { hapticTap } from '../utils/haptics';
 
+// Dot reads the room: no keyboard talk on touch screens, no paste advice
+// where paste is not a gesture, share-sheet talk only where it exists.
+const isTouch = typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+const isStandalone = typeof window !== 'undefined'
+  && (window.matchMedia('(display-mode: standalone)').matches
+    || (navigator as unknown as { standalone?: boolean }).standalone === true);
+
 // Dot: the full stop, alive. The librarian who files everything finally
 // gets a body: a vermilion period with blinking eyes that suggests the
 // next move. One line at a time, never twice in a row, easy to dismiss.
@@ -133,7 +140,7 @@ export default function Dot() {
       list.push({
         id: 'palette',
         text: 'Looking for something? I am faster than scrolling.',
-        action: { label: 'open ⌘K', run: () => setCommandPaletteOpen(true) },
+        action: { label: isTouch ? 'open search' : 'open ⌘K', run: () => setCommandPaletteOpen(true) },
       });
     }
     if (activeView === 'timeline') {
@@ -183,10 +190,17 @@ export default function Dot() {
         text: 'I can only ring while the book is open. The calendar action on a dated entry makes your phone do the ringing.',
       });
     }
-    list.push({
-      id: 'paste',
-      text: 'Read something good? Paste the link anywhere and I will file it.',
-    });
+    if (!isTouch) {
+      list.push({
+        id: 'paste',
+        text: 'Read something good? Paste the link anywhere and I will file it.',
+      });
+    } else if (isStandalone) {
+      list.push({
+        id: 'sharesheet',
+        text: 'I live in your share sheet now. Send me anything from any app and I will file it.',
+      });
+    }
     return list;
   }, [activeView, items, lastExportAt, setUploadModalOpen, setCommandPaletteOpen, setActiveView, setFilter, setSettingsModalOpen]);
 
