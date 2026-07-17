@@ -7,6 +7,8 @@ export interface SavedContent {
   tags: string[];
   summary: string;
   fileUrl?: string;
+  // Reference into the IndexedDB file drawer; replaces embedded data URLs.
+  fileKey?: string;
   reminderDate?: Date;
   userId: string;
   category: string;

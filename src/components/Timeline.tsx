@@ -17,6 +17,8 @@ import { buildShareUrl, renderNoteImage } from '../utils/shareNote';
 import { downloadICS } from '../utils/reminders';
 import { titleForUrl, hostForUrl } from '../utils/linkTitle';
 import InkText from './InkText';
+import { useFileUrl } from '../hooks/useFileUrl';
+import { loadFileUrl } from '../utils/fileVault';
 
 // Does the text use any notation worth rendering richly?
 const hasInkMarkup = (text: string): boolean =>
@@ -59,6 +61,66 @@ const fileName = (item: SavedContent) => item.contentText.split('\n')[0];
 
 const plateCaption = (item: SavedContent) =>
   ['Plate', fileName(item), formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ');
+
+// Media renders through the file drawer: each plate is its own component so
+// the useFileUrl hook resolves per attachment, not per row of the map.
+function EntryThumb({ item }: { item: SavedContent }) {
+  const url = useFileUrl(item);
+  if (!url) return null;
+  return (
+    <img
+      src={url}
+      alt=""
+      className="w-11 h-11 object-cover border-[1.5px] border-ink flex-shrink-0 rotate-2 shadow-[2px_2px_0_var(--ink)] group-hover:rotate-0 transition-transform"
+    />
+  );
+}
+
+function PhotoPlate({ item }: { item: SavedContent }) {
+  const url = useFileUrl(item);
+  if (!url) return null;
+  return (
+    <figure className="relative inline-block mt-5 mr-6 -rotate-[0.6deg]">
+      <div
+        aria-hidden
+        className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] z-10 rotate-[-3deg]"
+        style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
+      />
+      <div className="bg-paper-raised border-[1.5px] border-ink p-2.5 pb-1.5 shadow-[4px_4px_0_var(--ink)]">
+        <img src={url} alt={fileName(item)} className="max-h-72 border border-[var(--ink-line)]" />
+        <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+          {plateCaption(item)}
+        </figcaption>
+      </div>
+    </figure>
+  );
+}
+
+function SoundSlip({ item }: { item: SavedContent }) {
+  const url = useFileUrl(item);
+  if (!url) return null;
+  return (
+    <figure className="mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-3 max-w-md rotate-[-0.3deg]">
+      <audio src={url} controls className="w-full" />
+      <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+        {['Recording', fileName(item), formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ')}
+      </figcaption>
+    </figure>
+  );
+}
+
+function MovingPicture({ item }: { item: SavedContent }) {
+  const url = useFileUrl(item);
+  if (!url) return null;
+  return (
+    <figure className="inline-block mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-2.5 pb-1.5 rotate-[0.3deg]">
+      <video src={url} controls className="max-h-72 border border-[var(--ink-line)]" />
+      <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
+        {plateCaption(item)}
+      </figcaption>
+    </figure>
+  );
+}
 
 const timeLabel = (d: Date) =>
   d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).toLowerCase().replace(' ', '');
@@ -172,10 +234,12 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
   const urlInText = (t: string) => t.match(/https?:\/\/\S+/)?.[0];
 
-  const openLink = (item: SavedContent) => {
+  const openLink = async (item: SavedContent) => {
     const url = item.contentType === 'link'
       ? item.contentText
-      : item.fileUrl ?? urlInText(item.contentText);
+      : item.fileUrl
+        ?? (item.fileKey ? await loadFileUrl(item.fileKey) : undefined)
+        ?? urlInText(item.contentText);
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -335,12 +399,8 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           )}
                         </div>
                         {/* Tiny tipped-in thumbnail on collapsed image rows */}
-                        {!expanded && showPreviews && item.fileUrl && item.contentType === 'image' && (
-                          <img
-                            src={item.fileUrl}
-                            alt=""
-                            className="w-11 h-11 object-cover border-[1.5px] border-ink flex-shrink-0 rotate-2 shadow-[2px_2px_0_var(--ink)] group-hover:rotate-0 transition-transform"
-                          />
+                        {!expanded && showPreviews && (item.fileUrl || item.fileKey) && item.contentType === 'image' && (
+                          <EntryThumb item={item} />
                         )}
                       </div>
                     ) : (
@@ -392,20 +452,8 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* Tipped-in photograph: matte frame, tape, caption */}
-                          {showPreviews && item.fileUrl && item.contentType === 'image' && (
-                            <figure className="relative inline-block mt-5 mr-6 -rotate-[0.6deg]">
-                              <div
-                                aria-hidden
-                                className="absolute -top-2.5 left-1/2 -translate-x-1/2 w-16 h-4 bg-[var(--accent-soft)] border border-[var(--ink-line)] z-10 rotate-[-3deg]"
-                                style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
-                              />
-                              <div className="bg-paper-raised border-[1.5px] border-ink p-2.5 pb-1.5 shadow-[4px_4px_0_var(--ink)]">
-                                <img src={item.fileUrl} alt={fileName(item)} className="max-h-72 border border-[var(--ink-line)]" />
-                                <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
-                                  {plateCaption(item)}
-                                </figcaption>
-                              </div>
-                            </figure>
+                          {showPreviews && (item.fileUrl || item.fileKey) && item.contentType === 'image' && (
+                            <PhotoPlate item={item} />
                           )}
 
                           {/* Document slip for PDFs */}
@@ -422,23 +470,13 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                           )}
 
                           {/* Sound slip */}
-                          {item.fileUrl && item.contentType === 'audio' && (
-                            <figure className="mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-3 max-w-md rotate-[-0.3deg]">
-                              <audio src={item.fileUrl} controls className="w-full" />
-                              <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
-                                {['Recording', fileName(item), formatSize(item.metadata?.fileSize)].filter(Boolean).join(' · ')}
-                              </figcaption>
-                            </figure>
+                          {(item.fileUrl || item.fileKey) && item.contentType === 'audio' && (
+                            <SoundSlip item={item} />
                           )}
 
                           {/* Moving picture */}
-                          {showPreviews && item.fileUrl && item.contentType === 'video' && (
-                            <figure className="inline-block mt-5 bg-paper-raised border-[1.5px] border-ink shadow-[4px_4px_0_var(--ink)] p-2.5 pb-1.5 rotate-[0.3deg]">
-                              <video src={item.fileUrl} controls className="max-h-72 border border-[var(--ink-line)]" />
-                              <figcaption className="font-label text-[8px] text-ink-faint pt-1.5 uppercase">
-                                {plateCaption(item)}
-                              </figcaption>
-                            </figure>
+                          {showPreviews && (item.fileUrl || item.fileKey) && item.contentType === 'video' && (
+                            <MovingPicture item={item} />
                           )}
 
                           {item.summary && item.summary.length > 0 && !item.contentText.includes(item.summary) && (
@@ -449,7 +487,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
 
                           {/* Marginalia actions: thumb-sized on phones, pencil-sized on desks */}
                           <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 mt-4 sm:mt-5 mb-1 font-label text-[10px] sm:text-[9px] text-ink-soft">
-                            {(item.contentType === 'link' || item.fileUrl || urlInText(item.contentText)) && (
+                            {(item.contentType === 'link' || item.fileUrl || item.fileKey || urlInText(item.contentText)) && (
                               <>
                                 <button onClick={() => openLink(item)} className="hover:text-accent transition-colors flex items-center gap-1 py-2 sm:py-0">
                                   open <ExternalLink size={9} />

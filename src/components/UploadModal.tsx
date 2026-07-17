@@ -5,7 +5,9 @@ import toast from 'react-hot-toast';
 import { SavedContent } from '../types';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 import { clientSideAI } from '../utils/clientSideAI';
-import { MAX_EMBED_SIZE } from '../utils/notebookStorage';
+import { MAX_FILE_SIZE, MAX_INLINE_TEXT } from '../utils/notebookStorage';
+import { storeFile } from '../utils/fileVault';
+import { useStore } from '../store/useStore';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -89,14 +91,6 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
     return () => clearTimeout(t);
   }, [textInput, linkInput]);
 
-  const readFileAsDataURL = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(reader.error);
-      reader.readAsDataURL(file);
-    });
-
   const readFileAsText = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -115,32 +109,34 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
 
   // Attachments wait on the page as tipped-in slips until you file everything.
   const stageFiles = async (files: File[]) => {
-    const additions = await Promise.all(files.map(async (file): Promise<StagedFile> => {
+    const additions = files.map((file): StagedFile => {
       const kind = getContentType(file.type);
-      const tooBig = file.size > MAX_EMBED_SIZE;
-      let thumb: string | undefined;
-      if (kind === 'image' && !tooBig) {
-        try { thumb = await readFileAsDataURL(file); } catch { thumb = undefined; }
-      }
+      const tooBig = file.size > MAX_FILE_SIZE;
+      const thumb = kind === 'image' && !tooBig ? URL.createObjectURL(file) : undefined;
       return { key: newId(), file, kind, thumb, tooBig };
-    }));
+    });
     setStaged(prev => [...prev, ...additions]);
   };
 
+  // Files go into the file drawer as native blobs, sealed when the notebook
+  // is. The entry carries only the small fileKey reference, so filing media
+  // never rewrites the whole book.
   const fileAttachment = async (s: StagedFile) => {
-    let fileUrl: string | undefined;
+    let fileKey: string | undefined;
     let contentText = s.file.name;
 
-    if (s.kind === 'text' && !s.tooBig) {
+    if (s.kind === 'text' && s.file.size <= MAX_INLINE_TEXT) {
       try {
         contentText = `${s.file.name}\n\n${await readFileAsText(s.file)}`;
       } catch {
         contentText = s.file.name;
       }
     } else if (!s.tooBig) {
-      fileUrl = await readFileAsDataURL(s.file);
+      const sealed = !!useStore.getState().user?.encryptionEnabled;
+      fileKey = newId();
+      await storeFile(fileKey, s.file, sealed);
     } else {
-      toast(`"${s.file.name}" is over 8MB, so only its name was filed. Big media belongs in a real library.`);
+      toast(`"${s.file.name}" is over 100MB, so only its name was filed. That is beyond even this library.`);
     }
 
     await onAddContent({
@@ -151,7 +147,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
       timestamp: new Date(),
       tags: [],
       summary: '',
-      fileUrl,
+      fileKey,
       userId: 'local',
       category: 'articles',
       isFavorite: false,
@@ -237,7 +233,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
       window.setTimeout(() => {
         setTextInput('');
         setLinkInput('');
-        setStaged([]);
+        setStaged(prev => { prev.forEach(f => { if (f.thumb) URL.revokeObjectURL(f.thumb); }); return []; });
         setStamped(false);
         setIsProcessing(false);
         onClose();
@@ -410,7 +406,7 @@ export default function UploadModal({ isOpen, onClose, onAddContent }: UploadMod
                           </p>
                         </div>
                         <button
-                          onClick={() => { hapticTap(); setStaged(prev => prev.filter(f => f.key !== s.key)); }}
+                          onClick={() => { hapticTap(); if (s.thumb) URL.revokeObjectURL(s.thumb); setStaged(prev => prev.filter(f => f.key !== s.key)); }}
                           aria-label={`Remove ${s.file.name}`}
                           className="absolute top-1 right-1 text-ink-faint hover:text-accent transition-colors"
                         >

@@ -5,6 +5,7 @@ import { baseCategories } from '../utils/onboarding';
 import { encryptionManager } from '../utils/encryption';
 import { clientSideAI } from '../utils/clientSideAI';
 import { notebookStorage } from '../utils/notebookStorage';
+import { removeFile, clearFileVault, clearUrlCache, sealExistingFiles, fileToDataUrl, dataUrlToBlob, storeFile } from '../utils/fileVault';
 import toast from 'react-hot-toast';
 
 export const defaultFilter: FilterState = {
@@ -209,6 +210,9 @@ export const useStore = create<AppState>()(
             },
           }));
 
+          // Attachments already in the file drawer get sealed in place.
+          await sealExistingFiles().catch(() => {});
+
           toast.success('Encryption enabled. Your data is now encrypted at rest.');
         } catch (error) {
           toast.error('Failed to set up encryption');
@@ -244,6 +248,7 @@ export const useStore = create<AppState>()(
         const { user } = get();
         if (!user?.encryptionEnabled) return;
         encryptionManager.clearKeys();
+        clearUrlCache();
         set({ content: [], isEncryptionSetup: false });
       },
 
@@ -291,10 +296,14 @@ export const useStore = create<AppState>()(
         if (updated) void syncEncryptedItem(updated, set);
       },
 
-      deleteContent: (id) => set((state) => ({
-        content: state.content.filter(item => item.id !== id),
-        encryptedContent: state.encryptedContent.filter(item => item.id !== id),
-      })),
+      deleteContent: (id) => {
+        const doomed = get().content.find(item => item.id === id);
+        if (doomed?.fileKey) void removeFile(doomed.fileKey);
+        set((state) => ({
+          content: state.content.filter(item => item.id !== id),
+          encryptedContent: state.encryptedContent.filter(item => item.id !== id),
+        }));
+      },
 
       toggleFavorite: (id) => {
         set((state) => ({
@@ -335,10 +344,15 @@ export const useStore = create<AppState>()(
       setLoading: (loading) => set({ isLoading: loading }),
       setProcessing: (processing) => set({ isProcessing: processing }),
 
-      bulkDeleteContent: (ids) => set((state) => ({
-        content: state.content.filter(item => !ids.includes(item.id)),
-        encryptedContent: state.encryptedContent.filter(item => !ids.includes(item.id)),
-      })),
+      bulkDeleteContent: (ids) => {
+        for (const item of get().content) {
+          if (ids.includes(item.id) && item.fileKey) void removeFile(item.fileKey);
+        }
+        set((state) => ({
+          content: state.content.filter(item => !ids.includes(item.id)),
+          encryptedContent: state.encryptedContent.filter(item => !ids.includes(item.id)),
+        }));
+      },
 
       bulkToggleFavorite: (ids) => {
         const { content } = get();
@@ -354,9 +368,18 @@ export const useStore = create<AppState>()(
         }));
       },
 
-      exportContent: (ids) => {
+      exportContent: async (ids) => {
         const { content } = get();
-        const items = ids ? content.filter(c => ids.includes(c.id)) : content;
+        const selected = ids ? content.filter(c => ids.includes(c.id)) : content;
+        // Inline drawer files back into data URLs so the export stays one
+        // portable document that any device can restore from.
+        const items = await Promise.all(selected.map(async (item) => {
+          if (!item.fileKey) return item;
+          const fileUrl = await fileToDataUrl(item.fileKey).catch(() => null);
+          const { fileKey, ...rest } = item;
+          void fileKey;
+          return fileUrl ? { ...rest, fileUrl } : item;
+        }));
         const payload = {
           app: 'supermind',
           version: 1,
@@ -399,10 +422,25 @@ export const useStore = create<AppState>()(
 
         set((state) => ({ content: [...newItems, ...state.content] }));
         newItems.forEach(item => void syncEncryptedItem(item, set));
+        // Imported attachments arrive as embedded data URLs; move each into
+        // the file drawer in the background so the notebook stays light.
+        void (async () => {
+          for (const item of newItems) {
+            if (!item.fileUrl?.startsWith('data:')) continue;
+            const blob = await dataUrlToBlob(item.fileUrl);
+            if (!blob) continue;
+            const fileKey = `file_${item.id}`;
+            await storeFile(fileKey, blob, !!get().user?.encryptionEnabled).catch(() => null);
+            get().updateContent(item.id, { fileUrl: undefined, fileKey });
+          }
+        })();
         return newItems.length;
       },
 
-      deleteAllContent: () => set({ content: [], encryptedContent: [], selectedContent: null }),
+      deleteAllContent: () => {
+        void clearFileVault();
+        set({ content: [], encryptedContent: [], selectedContent: null });
+      },
 
       getSecurityScore: () => {
         const { settings, content, encryptedContent } = get();
@@ -437,6 +475,7 @@ export const useStore = create<AppState>()(
           settings: defaultSettings,
         });
         // Remove persisted data after the state update flushes.
+        void clearFileVault();
         setTimeout(() => notebookStorage.removeItem('supermind-storage'), 50);
         toast.success('Signed out. Local data cleared.');
       },

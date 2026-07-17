@@ -4,6 +4,7 @@ import { X, Download, Upload, Trash2, Lock, Send } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { hapticTap } from '../../utils/haptics';
 import { requestNotificationPermission } from '../../utils/reminders';
+import { fileToDataUrl } from '../../utils/fileVault';
 import toast from 'react-hot-toast';
 
 const sections = [
@@ -170,12 +171,20 @@ export default function SettingsModal() {
   // sheet. Device to device, no server ever in the middle.
   const handlePassNotebook = async () => {
     hapticTap();
+    // Drawer files ride along inlined, so the notebook travels whole.
+    const items = await Promise.all(content.map(async (item) => {
+      if (!item.fileKey) return item;
+      const inlined = await fileToDataUrl(item.fileKey).catch(() => null);
+      const { fileKey, ...rest } = item;
+      void fileKey;
+      return inlined ? { ...rest, fileUrl: inlined } : item;
+    }));
     const payload = {
       app: 'supermind',
       version: 1,
       exportedAt: new Date().toISOString(),
       owner: user?.name ?? '',
-      items: content,
+      items,
     };
     const json = JSON.stringify(payload, null, 2);
     const file = new File([json], `supermind-notebook-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' });
@@ -513,7 +522,7 @@ export default function SettingsModal() {
         </div>
       )}
 
-      <Row title="Pass to another device" detail="Hands the whole notebook to AirDrop or your share sheet. Open supermind on the other device and import it.">
+      <Row title="Pass to another device" detail={`Hands the whole notebook to AirDrop or your share sheet. Open supermind on the other device and import it.${settings.security.encryptionEnabled ? ' The file itself is readable ink, not ciphertext; treat it like the open notebook.' : ''}`}>
         <button
           onClick={handlePassNotebook}
           className="btn-ink haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"
@@ -522,7 +531,7 @@ export default function SettingsModal() {
         </button>
       </Row>
 
-      <Row title="Export everything" detail={`Download all ${content.length} items as a JSON backup.`}>
+      <Row title="Export everything" detail={`Download all ${content.length} items as a JSON backup.${settings.security.encryptionEnabled ? ' Backups are readable ink, not ciphertext; store them somewhere you trust.' : ''}`}>
         <button
           onClick={() => { exportContent(); toast.success('Backup downloaded'); }}
           className="btn-paper haptic px-4 py-1.5 rounded-sm text-xs font-semibold flex items-center gap-1.5 flex-shrink-0"

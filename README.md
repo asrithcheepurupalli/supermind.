@@ -10,7 +10,7 @@ Most note apps are a database you rent. This one is a notebook you own. Everythi
 
 ## What it does
 
-**Capture.** This is the whole product, so it works from everywhere. Press Ctrl+N (or Cmd+N) and start typing. Paste text, a link, or an image anywhere in the app, outside a text field, and it files itself on the spot. Install it on a phone and it shows up in the share sheet, so anything you can share becomes a note. You can even write your first thought on the landing page before you have a profile; it will be waiting inside, already filed. Small files are embedded whole so they survive reloads; big ones keep their name and metadata.
+**Capture.** This is the whole product, so it works from everywhere. Press Ctrl+N (or Cmd+N) and start typing. Paste text, a link, or an image anywhere in the app, outside a text field, and it files itself on the spot. Install it on a phone and it shows up in the share sheet, so anything you can share becomes a note. You can even write your first thought on the landing page before you have a profile; it will be waiting inside, already filed. Attachments up to 100MB each live in their own IndexedDB drawer as native blobs, so filing a note never rewrites your media; bigger ones keep their name and metadata.
 
 **Organize.** As you save, the app tags each entry with the strongest words you actually wrote, sorts it into a category, and writes a short summary for longer ones. Dates in plain language become real reminders: "call mom on tuesday at 5pm", "rent due aug 3", "in 3 days" all resolve to the right moment. All of this is heuristics running in your browser. No model, no API calls, and the code doesn't pretend otherwise.
 
@@ -60,11 +60,11 @@ Press `?` in the app for the full list. The short version:
 
 React 18 with TypeScript, bundled by Vite. State is a single Zustand store persisted to IndexedDB, with a silent migration for notebooks that began life in localStorage. Search is Fuse.js. Encryption uses the Web Crypto API directly. The graph is a custom force simulation on a canvas, no charting library. Styling is Tailwind plus a small set of design tokens: warm paper, ink, one vermilion accent, a serif for display type and a mono for labels.
 
-When encryption is on, the sensitive fields of every item are encrypted before anything touches storage. Plaintext exists only in memory while the app is unlocked.
+When encryption is on, the sensitive fields of every item and the raw bytes of every attachment are encrypted before anything touches storage. Plaintext exists only in memory while the app is unlocked. Exports are intentionally plaintext, so treat a backup like the open notebook.
 
 ## Limits worth knowing
 
-Storage is IndexedDB, so a notebook can grow to gigabytes, and the browser is asked to treat it as persistent. Files up to 8MB tuck into the notebook itself; anything bigger is recorded by name only, because a notebook is not a media library. There is no background sync; moving between devices is a deliberate hand-off, one file, never a server. And the organizer is deterministic heuristics reading your own words, which is fast and private, but it is not a language model.
+Storage is IndexedDB, so a notebook can grow to gigabytes, and the browser is asked to treat it as persistent. Attachments up to 100MB each live in a separate file drawer, encrypted when the notebook is sealed; anything bigger is recorded by name only. Exports inline the files back in, so a backup is still one portable document. There is no background sync; moving between devices is a deliberate hand-off, one file, never a server. And the organizer is deterministic heuristics reading your own words, which is fast and private, but it is not a language model.
 
 ## Contributing
 

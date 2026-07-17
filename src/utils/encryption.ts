@@ -66,6 +66,7 @@ class EncryptionManager {
       summary: content.summary,
       tags: content.tags,
       fileUrl: content.fileUrl,
+      fileKey: content.fileKey,
     };
 
     const encryptedBuffer = await crypto.subtle.encrypt(
@@ -114,6 +115,7 @@ class EncryptionManager {
         summary: sensitiveData.summary,
         tags: sensitiveData.tags,
         fileUrl: sensitiveData.fileUrl,
+        fileKey: sensitiveData.fileKey,
         contentType: encryptedContent.contentType as SavedContent['contentType'],
         sourceApp: encryptedContent.sourceApp,
         timestamp: encryptedContent.timestamp,
@@ -129,6 +131,20 @@ class EncryptionManager {
     } catch {
       throw new Error('Failed to decrypt content. Invalid key or corrupted data.');
     }
+  }
+
+  // Raw-byte encryption for attachments: same key, same AES-GCM, no JSON
+  // detour, so a 50MB file is one pass over its own bytes.
+  async encryptBytes(bytes: ArrayBuffer): Promise<{ iv: number[]; data: ArrayBuffer }> {
+    if (!this.masterKey) throw new Error('Master key not initialized');
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, this.masterKey, bytes);
+    return { iv: Array.from(iv), data };
+  }
+
+  async decryptBytes(iv: number[], data: ArrayBuffer): Promise<ArrayBuffer> {
+    if (!this.masterKey) throw new Error('Master key not initialized');
+    return crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, this.masterKey, data);
   }
 
   exportSalt(): string | null {

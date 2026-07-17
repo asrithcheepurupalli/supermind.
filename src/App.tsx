@@ -29,7 +29,8 @@ import { useStore, getCategoriesWithCounts, defaultFilter } from './store/useSto
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
-import { MAX_EMBED_SIZE, notebookStorage } from './utils/notebookStorage';
+import { MAX_FILE_SIZE, notebookStorage } from './utils/notebookStorage';
+import { storeFile, dataUrlToBlob } from './utils/fileVault';
 import { notifyReminder } from './utils/reminders';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
@@ -176,6 +177,31 @@ function App() {
     return () => window.clearInterval(id);
   }, [remindersEnabled, isAuthenticated]);
 
+  // Librarian's night shift: entries from the embedded-data-URL era carry
+  // their file bytes inside the notebook JSON. Move each into the file
+  // drawer once, so every future save is light. Sealed notebooks migrate
+  // only while unlocked, and their files go in encrypted.
+  const migratedFilesRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isAuthenticated || migratedFilesRef.current) return;
+    if (user?.encryptionEnabled && !isEncryptionSetup) return;
+    migratedFilesRef.current = true;
+    (async () => {
+      const items = useStore.getState().content.filter(c => c.fileUrl?.startsWith('data:'));
+      for (const item of items) {
+        try {
+          const blob = await dataUrlToBlob(item.fileUrl as string);
+          if (!blob) continue;
+          const fileKey = `file_${item.id}`;
+          await storeFile(fileKey, blob, !!useStore.getState().user?.encryptionEnabled);
+          useStore.getState().updateContent(item.id, { fileUrl: undefined, fileKey });
+        } catch {
+          // Leave the embedded copy in place; a failed move loses nothing.
+        }
+      }
+    })();
+  }, [isAuthenticated, user?.encryptionEnabled, isEncryptionSetup]);
+
   // Two tabs, one notebook: persistence is whole-file, so the last writer
   // wins and the other tab's fresh entries could vanish. On focus, re-read
   // the shelf and adopt anything another tab filed while we looked away.
@@ -314,20 +340,21 @@ function App() {
       const imageItem = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'));
       if (imageItem) {
         const file = imageItem.getAsFile();
-        if (file && file.size > MAX_EMBED_SIZE) {
+        if (file && file.size > MAX_FILE_SIZE) {
           e.preventDefault();
-          toast.error('That image is over 8MB, too heavy to tuck into the notebook.');
+          toast.error('That image is over 100MB, beyond even this library.');
           return;
         }
-        if (file && file.size <= MAX_EMBED_SIZE) {
+        if (file) {
           e.preventDefault();
-          const fileUrl = await new Promise<string>((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(r.result as string);
-            r.onerror = () => reject(r.error);
-            r.readAsDataURL(file);
+          const fileKey = `file_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+          await storeFile(fileKey, file, !!useStore.getState().user?.encryptionEnabled);
+          await addContent({
+            ...makeCapture(file.name || 'pasted image', undefined, 'image'),
+            fileKey,
+            sourceApp: 'Clipboard',
+            metadata: { fileSize: file.size },
           });
-          await addContent({ ...makeCapture(file.name || 'pasted image', fileUrl, 'image'), metadata: { fileSize: file.size } });
           hapticSuccess();
           toast.success('Filed from your clipboard');
           return;
