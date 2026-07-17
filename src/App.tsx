@@ -314,6 +314,11 @@ function App() {
       const imageItem = [...(e.clipboardData?.items ?? [])].find(i => i.type.startsWith('image/'));
       if (imageItem) {
         const file = imageItem.getAsFile();
+        if (file && file.size > MAX_EMBED_SIZE) {
+          e.preventDefault();
+          toast.error('That image is over 8MB, too heavy to tuck into the notebook.');
+          return;
+        }
         if (file && file.size <= MAX_EMBED_SIZE) {
           e.preventDefault();
           const fileUrl = await new Promise<string>((resolve, reject) => {
