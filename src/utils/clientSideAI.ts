@@ -93,8 +93,17 @@ export const parseNaturalDate = (raw: string, now: Date = new Date()): Date | un
     if (wd) {
       const target = WEEKDAYS.indexOf(wd[2]);
       let ahead = (target - now.getDay() + 7) % 7;
-      if (ahead === 0) ahead = 7;
-      if (wd[1] === 'next' && ahead < 7) ahead += 7;
+      if (wd[1] === 'next') {
+        // "next friday" always reaches into next week.
+        if (ahead < 7) ahead += 7;
+      } else if (ahead === 0) {
+        // "on friday", said on a Friday: today, unless the moment has
+        // already slipped past, in which case next week.
+        const probe = new Date(now);
+        if (time) probe.setHours(time.h, time.m, 0, 0);
+        else probe.setHours(9, 0, 0, 0);
+        if (probe.getTime() <= now.getTime()) ahead = 7;
+      }
       result.setDate(now.getDate() + ahead);
       dated = true;
     }

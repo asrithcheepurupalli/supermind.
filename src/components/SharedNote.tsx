@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, BookmarkPlus } from 'lucide-react';
 import MadeBadge from './MadeBadge';
+import InkText from './InkText';
 import type { SharedNote as SharedNotePayload } from '../utils/shareNote';
 
 interface SharedNoteProps {
@@ -57,9 +58,9 @@ export default function SharedNote({ note, isAuthenticated, onSave, onOpenApp }:
               style={{ clipPath: 'polygon(2% 0, 98% 4%, 100% 96%, 0 100%)' }}
             />
             {date && <p className="font-label text-[9px] text-ink-faint mb-4">{date}</p>}
-            <p className="font-display text-2xl leading-relaxed text-ink whitespace-pre-wrap break-words">
-              {note.t}
-            </p>
+            <div className="font-display text-2xl leading-relaxed text-ink break-words">
+              <InkText text={note.t} />
+            </div>
             {!!note.g?.length && (
               <div className="flex flex-wrap gap-3 mt-5">
                 {note.g.map(tag => (

@@ -22,6 +22,15 @@ import InkText from './InkText';
 const hasInkMarkup = (text: string): boolean =>
   /^\s*- \[( |x)\] /m.test(text) || /^\s*[-*] \S/m.test(text) || /\*\*[^*\n]+\*\*|`[^`\n]+`/.test(text);
 
+// Collapsed rows read as prose: notation markers step aside for middots.
+const plainPreview = (text: string): string =>
+  text
+    .replace(/^\s*- \[( |x)\]\s*/gm, '· ')
+    .replace(/^\s*[-*]\s+/gm, '· ')
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/`([^`\n]+)`/g, '$1');
+
 interface TimelineProps {
   content: SavedContent[];
   filter: FilterState;
@@ -316,7 +325,7 @@ export default function Timeline({ content, filter, onToggleFavorite, onFilterCh
                                 <span className="underline decoration-[var(--ink-line)] underline-offset-4 group-hover:decoration-[var(--accent)]">
                                   {titleForUrl(item.contentText)}
                                 </span>
-                              ) : item.contentText}
+                              ) : expanded ? item.contentText : plainPreview(item.contentText)}
                             </p>
                           )}
                           {item.contentType === 'link' && (

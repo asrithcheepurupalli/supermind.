@@ -13,7 +13,6 @@ import UploadModal from './components/UploadModal';
 import AuthModal from './components/AuthModal';
 import SettingsModal from './components/advanced/SettingsModal';
 import EncryptionSetup from './components/EncryptionSetup';
-import SecurityBadge from './components/SecurityBadge';
 import Almanac from './components/Almanac';
 import Toast from './components/ui/Toast';
 import AboutPage from './components/AboutPage';
@@ -909,7 +908,6 @@ className="flex flex-wrap gap-2 mt-3.5 pt-3.5 border-t border-[var(--ink-line)]"
       <Legend />
       <Dot />
 
-      {settings.security.encryptionEnabled && <SecurityBadge variant="floating" />}
 
       <Toast />
       {/* Vercel Analytics ships only when explicitly enabled. The product
