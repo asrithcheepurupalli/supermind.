@@ -77,11 +77,11 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
       </div>
 
       <h2 className="font-display text-3xl md:text-4xl tracking-tight mb-3 text-ink">
-        {isLogin ? <>Unlock Your <em className="marker">Encrypted Data</em></> : <>Choose your <em className="marker">passphrase</em></>}
+        {isLogin ? <>The notebook is <em className="marker">sealed</em>.</> : <>Choose your <em className="marker">passphrase</em></>}
       </h2>
       <p className="text-ink-soft text-sm leading-relaxed mb-8">
         {isLogin
-          ? 'Enter your passphrase to open the vault.'
+          ? 'Your passphrase opens it. The key never left this device.'
           : 'It becomes your encryption key, never stored and never sent. Lose it and the vault stays sealed for good.'}
       </p>
 
@@ -95,7 +95,7 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your master password"
+              placeholder="Your passphrase"
               autoFocus
               className="bare-input w-full bg-paper border-[1.5px] border-ink rounded-sm px-4 py-3 pr-12 text-ink outline-none focus:border-[var(--accent)] transition-colors font-medium"
               required
@@ -135,7 +135,7 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
                 type={showPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your master password"
+                placeholder="The same passphrase again"
                 className="bare-input w-full bg-paper border-[1.5px] border-ink rounded-sm px-4 py-3 pr-12 text-ink outline-none focus:border-[var(--accent)] transition-colors font-medium"
                 required
               />
@@ -164,10 +164,10 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
 
         <button
           type="submit"
-          disabled={isLoading || !password || (!isLogin && password !== confirmPassword)}
+          disabled={isLoading}
           className="btn-ink haptic w-full py-3.5 rounded-sm font-semibold disabled:opacity-40 disabled:pointer-events-none"
         >
-          {isLoading ? 'working…' : isLogin ? 'Unlock Data' : 'Setup Encryption'}
+          {isLoading ? 'working…' : isLogin ? 'Open the notebook' : 'Seal the notebook'}
         </button>
       </form>
 
@@ -186,6 +186,13 @@ export default function EncryptionSetup({ onComplete, isLogin = false }: Encrypt
       {!isLogin && !useGeneratedPassword && (
         <p className="font-label text-[9px] text-ink-faint mt-6 leading-relaxed">
           key derived on this device (pbkdf2 · 250k) and held in memory only
+        </p>
+      )}
+
+      {isLogin && (
+        <p className="font-label text-[9px] text-ink-faint mt-6 leading-relaxed">
+          lost the passphrase? real encryption has no reset. start a fresh notebook and
+          restore from a backup file if you kept one.
         </p>
       )}
     </div>
