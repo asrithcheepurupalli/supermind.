@@ -90,6 +90,26 @@ export default function Legend() {
                   </div>
                 </section>
               ))}
+
+              {/* Ink notation: what the pen understands */}
+              <section>
+                <h3 className="font-label text-[9px] text-accent mb-2.5">ink</h3>
+                <div className="space-y-1.5">
+                  {[
+                    ['- [ ] task', 'a checkbox you can tick in the book'],
+                    ['- point', 'a bullet'],
+                    ['**bold** and *italic*', 'emphasis'],
+                    ['`code`', 'monospace'],
+                    ['"call mom on tuesday at 5pm"', 'dates in plain words become reminders'],
+                  ].map(([mark, meaning]) => (
+                    <div key={mark} className="flex items-baseline gap-2">
+                      <span className="font-label text-[10px] text-ink flex-shrink-0">{mark}</span>
+                      <span className="flex-1 border-b border-dotted border-[var(--ink-line)] translate-y-[-3px]" />
+                      <span className="text-ink-soft text-sm text-right">{meaning}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
             </div>
 
             <div className="px-7 py-3 border-t border-[var(--ink-line)]">

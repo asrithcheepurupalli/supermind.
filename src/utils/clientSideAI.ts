@@ -219,10 +219,9 @@ export class ClientSideAI {
       }
     });
 
-    tags.push(contentType);
-    if (content.length > 1000) tags.push('long-form');
-
-    if (/https?:\/\/[^\s]+/.test(content)) tags.push('contains-link');
+    // No meta-tags: the entry's type already has a glyph and a filter of its
+    // own, and a graph whose brightest star is "text" tells you nothing.
+    void contentType;
 
     return [...new Set(tags)].slice(0, 6);
   }

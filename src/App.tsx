@@ -29,7 +29,7 @@ import { useStore, getCategoriesWithCounts } from './store/useStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoLock } from './hooks/useAutoLock';
 import { hapticTap, hapticSuccess } from './utils/haptics';
-import { MAX_EMBED_SIZE } from './utils/notebookStorage';
+import { MAX_EMBED_SIZE, notebookStorage } from './utils/notebookStorage';
 import { notifyReminder } from './utils/reminders';
 import { formatDistanceToNow } from 'date-fns';
 import type { SavedContent } from './types';
@@ -121,6 +121,30 @@ function App() {
   };
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
 
+  // Header dropdowns are courteous: a click elsewhere or Escape dismisses
+  // them, like every menu the user has ever met.
+  const bellRef = React.useRef<HTMLDivElement>(null);
+  const zapRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!notificationsOpen && !quickActions) return;
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (notificationsOpen && bellRef.current && !bellRef.current.contains(t)) setNotificationsOpen(false);
+      if (quickActions && zapRef.current && !zapRef.current.contains(t)) setQuickActions(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setNotificationsOpen(false);
+      setQuickActions(false);
+    };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [notificationsOpen, quickActions]);
+
   useKeyboardShortcuts();
   useAutoLock();
 
@@ -151,6 +175,38 @@ function App() {
     const id = window.setInterval(tick, 30000);
     return () => window.clearInterval(id);
   }, [remindersEnabled, isAuthenticated]);
+
+  // Two tabs, one notebook: persistence is whole-file, so the last writer
+  // wins and the other tab's fresh entries could vanish. On focus, re-read
+  // the shelf and adopt anything another tab filed while we looked away.
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    const reconcile = async () => {
+      try {
+        const state = useStore.getState();
+        if (state.user?.encryptionEnabled) return; // plaintext never persisted while sealed
+        const raw = await notebookStorage.getItem('supermind-storage');
+        if (!raw) return;
+        const diskContent = (JSON.parse(raw) as { state?: { content?: unknown[] } })?.state?.content;
+        if (!Array.isArray(diskContent)) return;
+        const have = new Set(state.content.map(c => c.id));
+        const missing = (diskContent as SavedContent[])
+          .filter(c => c && typeof c.id === 'string' && typeof c.contentText === 'string' && !have.has(c.id))
+          .map(c => ({
+            ...c,
+            timestamp: new Date(c.timestamp),
+            reminderDate: c.reminderDate ? new Date(c.reminderDate) : undefined,
+          }))
+          .filter(c => !isNaN(c.timestamp.getTime()));
+        if (missing.length === 0) return;
+        useStore.setState(s => ({ content: [...missing, ...s.content] }));
+      } catch {
+        // A reconcile that fails changes nothing; the next focus tries again.
+      }
+    };
+    window.addEventListener('focus', reconcile);
+    return () => window.removeEventListener('focus', reconcile);
+  }, [isAuthenticated]);
 
   const notifications = React.useMemo(() => {
     if (!remindersEnabled) return [];
@@ -548,7 +604,7 @@ function App() {
               <ThemeToggle />
 
               {/* Notifications */}
-              <div className="relative">
+              <div className="relative" ref={bellRef}>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -593,7 +649,7 @@ function App() {
               </div>
 
               {/* Quick Actions */}
-              <div className="relative">
+              <div className="relative" ref={zapRef}>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}

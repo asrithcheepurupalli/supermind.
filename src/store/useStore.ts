@@ -488,7 +488,14 @@ export const useStore = create<AppState>()(
           ...current,
           ...state,
           // The old guide system is gone; drop any seeded guide entries.
-          content: (state.content ?? []).filter(c => !c?.metadata?.isGuide),
+          // Meta-tags from earlier versions ("text", "contains-link", ...)
+          // said nothing the type glyph doesn't; sweep them from old ink.
+          content: (state.content ?? [])
+            .filter(c => !c?.metadata?.isGuide)
+            .map(c => ({
+              ...c,
+              tags: (c.tags ?? []).filter(t => !['text', 'link', 'image', 'pdf', 'audio', 'video', 'contains-link', 'long-form', 'quick-note', 'hashtags', 'mentions', 'contains-date'].includes(t)),
+            })),
           settings: {
             ...defaultSettings,
             ...s,
