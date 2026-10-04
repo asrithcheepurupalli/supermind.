@@ -841,7 +841,9 @@ export default function LandingPage({ onGetStarted, onAbout }: LandingPageProps)
             set in instrument serif & jetbrains mono · runs entirely on your device
             <br />
             © {new Date().getFullYear()} · no accounts were created in the making of this app.{' '}
-            <button onClick={onAbout} className="underline hover:text-ink transition-colors">about</button>
+            <button onClick={onAbout} className="underline hover:text-ink transition-colors">about</button>{' · '}
+            <a href="/privacy" className="underline hover:text-ink transition-colors">privacy</a>{' · '}
+            <a href="/terms" className="underline hover:text-ink transition-colors">terms</a>
           </div>
         </div>
       </footer>

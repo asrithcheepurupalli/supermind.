@@ -1,7 +1,7 @@
 // Minimal offline-first service worker: network-first for navigation,
 // cache-first for hashed build assets. Keeps supermind fully usable offline —
 // fitting, since the data never leaves the device either.
-const CACHE = 'supermind-v1';
+const CACHE = 'supermind-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/'])));
@@ -29,11 +29,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put('/', copy));
+          // Only the app itself is the offline shell. Other pages (privacy, terms) must not replace it.
+          if (url.pathname === '/' || url.pathname === '/about') {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put('/', copy));
+          }
           return response;
         })
-        .catch(() => caches.match('/'))
+        .catch(() => (url.pathname === '/' || url.pathname === '/about' ? caches.match('/') : caches.match(request).then((r) => r || caches.match('/'))))
     );
     return;
   }

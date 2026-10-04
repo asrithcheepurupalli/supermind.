@@ -566,7 +566,9 @@ export default function AboutPage({ onBack }: AboutPageProps) {
         <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col items-center gap-3">
           <MadeBadge />
           <p className="font-label text-[9px] text-ink-faint">
-            © {new Date().getFullYear()} supermind · runs entirely on your device
+            © {new Date().getFullYear()} supermind · runs entirely on your device ·{' '}
+            <a href="/privacy" className="underline hover:text-ink transition-colors">privacy</a> ·{' '}
+            <a href="/terms" className="underline hover:text-ink transition-colors">terms</a>
           </p>
         </div>
       </footer>
